@@ -63,6 +63,6 @@ This is a multi-line REPL. The end of command character is a semicolon `;` or an
 +------------+
 ```
 
-[Contributing](https://github.com/hpolloni/rdsline/blob/master/CONTRIBUTING.md)
-[MIT License](https://github.com/hpolloni/rdsline/blob/master/LICENSE.txt)
+* [Contributing](https://github.com/hpolloni/rdsline/blob/master/CONTRIBUTING.md)
+* [MIT License](https://github.com/hpolloni/rdsline/blob/master/LICENSE.txt)
 
