@@ -2,18 +2,15 @@
 This is a REPL for the RDS data API. 
 
 ### Install
-Python3 is needed. We currently only support running it as a Python script.
-
 ```
-$ python3 -m venv .venv
-$ source .venv/bin/activate
-$ pip3 install -r requirements.txt
+$ pip install rdsline
 ```
 
+Shu
 ### Usage
 ```
-$ python3 rdsline.py --help
-usage: rdsline.py [-h] [--config CONFIG]
+$ rdsline --help
+usage: rdsline [-h] [--config CONFIG]
 
 optional arguments:
   -h, --help       show this help message and exit
@@ -71,7 +68,6 @@ This is a multi-line REPL. The end of command character is a semicolon `;` or an
 
 
 ### TODO
-* Wishlist: an actual CLI with setuptools. 
 * Wishlist: `brew install rdsline`
 * Testing
 * Static analysis

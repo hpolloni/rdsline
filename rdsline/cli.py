@@ -1,6 +1,6 @@
-from tabulate import tabulate
-import readline # this is needed in order to get nice behavior of input()
-import settings
+from rdsline.tabulate import tabulate
+import readline # needed in order to get nice behavior of input()
+import rdsline.settings as settings
 import os
 
 def to_string(val):
