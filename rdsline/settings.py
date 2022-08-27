@@ -1,10 +1,60 @@
+"""
+Settings module for the cli.
+"""
+from abc import ABC, abstractmethod
 import argparse
 from typing import Any
 import yaml
 import boto3
 
 
-class ConnectionSettings:
+class ConnectionSettings(ABC):
+    """
+    Connection settings for a database.
+    """
+
+    @abstractmethod
+    def execute(self, sql: str) -> Any:
+        """
+        Executes a query using this connection settings.
+        """
+
+    @abstractmethod
+    def is_executable(self) -> bool:
+        """
+        Returns if this connection settings is executable (i.e. all settings are correctly set)
+        """
+
+    @abstractmethod
+    def print(self):
+        """
+        Print these settings. Intended for use in the CLI.
+        """
+
+
+class NoopConnectionSettings(ConnectionSettings):
+    """
+    No op connection settings.
+    """
+
+    def __init__(self):
+        pass
+
+    def is_executable(self) -> bool:
+        return False
+
+    def print(self):
+        print("No connection settings. Maybe you need to run .config")
+
+    def execute(self, sql: str) -> Any:
+        raise NotImplementedError("Execute in No op")
+
+
+class RDSSecretsManagerSettings(ConnectionSettings):
+    """
+    Connection settings for RDS with secretsmanager.
+    """
+
     def __init__(self, cluster_arn: str, secret_arn: str, database: str, client):
         self.cluster_arn = cluster_arn
         self.secret_arn = secret_arn
@@ -26,13 +76,14 @@ class ConnectionSettings:
             self.cluster_arn is not None
             and self.secret_arn is not None
             and self.database is not None
+            and self.client is not None
         )
 
     def print(self):
         print("Type: rds-secretsmanager")
-        print("Cluster arn: %s" % self.cluster_arn)
-        print("Secret arn: %s" % self.secret_arn)
-        print("Database: %s" % self.database)
+        print(f"Cluster arn: {self.cluster_arn}")
+        print(f"Secret arn: {self.secret_arn}")
+        print(f"Database: {self.database}")
 
 
 def _get_region(cluster_arn: str):
@@ -40,20 +91,32 @@ def _get_region(cluster_arn: str):
     return arn_parts[3]
 
 
-def from_file(file: str):
-    settings = yaml.safe_load(open(file, "r"))
+def _client_provider(profile: str, region: str):
+    session = boto3.Session(profile_name=profile)
+    return session.client("rds-data", region_name=region)
+
+
+def from_file(file: str, client_provider=_client_provider):
+    """
+    Reads settings from a file.
+    """
+    settings = {}
+    with open(file, "r", encoding="utf-8") as stream:
+        settings = yaml.safe_load(stream)
     if settings["type"] != "rds-secretsmanager":
-        raise Exception("Unsupported database connection type: %s" % settings["type"])
+        raise Exception(f"Unsupported database connection type: {settings['type']}")
     region = _get_region(settings["cluster_arn"])
-    client = boto3.Session(profile_name=settings["credentials"]["profile"]).client(
-        "rds-data", region_name=region
-    )
-    return ConnectionSettings(
+    profile = settings["credentials"]["profile"]
+    client = client_provider(profile, region)
+    return RDSSecretsManagerSettings(
         settings["cluster_arn"], settings["secret_arn"], settings["database"], client
     )
 
 
 def from_args():
+    """
+    Reads settings from cli args.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", type=str, required=False, help="Config file to read settings from"
@@ -61,4 +124,4 @@ def from_args():
     args = parser.parse_args()
     if args.config is not None:
         return from_file(args.config)
-    return ConnectionSettings(None, None, None, boto3.client("rds-data"))
+    return NoopConnectionSettings()

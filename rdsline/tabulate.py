@@ -9,11 +9,7 @@ from collections import namedtuple
 from platform import python_version_tuple
 import re
 import math
-
-if python_version_tuple() >= ("3", "3", "0"):
-    from collections.abc import Iterable
-else:
-    from collections import Iterable
+from collections.abc import Iterable
 
 from itertools import zip_longest as izip_longest
 from functools import reduce, partial
@@ -484,12 +480,8 @@ multiline_formats = {
 
 _multiline_codes = re.compile(r"\r|\n|\r\n")
 _multiline_codes_bytes = re.compile(b"\r|\n|\r\n")
-_invisible_codes = re.compile(
-    r"\x1b\[\d+[;\d]*m|\x1b\[\d*\;\d*\;\d*m"
-)  # ANSI color codes
-_invisible_codes_bytes = re.compile(
-    b"\x1b\[\d+[;\d]*m|\x1b\[\d*\;\d*\;\d*m"
-)  # ANSI color codes
+_invisible_codes = re.compile(r"\x1b\[\d+[;\d]*m|\x1b\[\d*\;\d*\;\d*m")  # ANSI color codes
+_invisible_codes_bytes = re.compile(b"\x1b\[\d+[;\d]*m|\x1b\[\d*\;\d*\;\d*m")  # ANSI color codes
 
 
 def simple_separated_format(separator):
@@ -586,9 +578,7 @@ def _type(string, has_invisible=True, numparse=True):
 
     """
 
-    if has_invisible and (
-        isinstance(string, _text_type) or isinstance(string, _binary_type)
-    ):
+    if has_invisible and (isinstance(string, _text_type) or isinstance(string, _binary_type)):
         string = _strip_invisible(string)
 
     if string is None:
@@ -770,8 +760,7 @@ def _align_column(
     if is_multiline:
         if not enable_widechars and not has_invisible:
             padded_strings = [
-                "\n".join([padfn(maxwidth, s) for s in ms.splitlines()])
-                for ms in strings
+                "\n".join([padfn(maxwidth, s) for s in ms.splitlines()]) for ms in strings
             ]
         else:
             # enable wide-character width corrections
@@ -866,9 +855,7 @@ def _format(val, valtype, floatfmt, missingval="", has_invisible=True):
         except TypeError:
             return _text_type(val)
     elif valtype is float:
-        is_a_colored_number = has_invisible and isinstance(
-            val, (_text_type, _binary_type)
-        )
+        is_a_colored_number = has_invisible and isinstance(val, (_text_type, _binary_type))
         if is_a_colored_number:
             raw_val = _strip_invisible(val)
             formatted_val = format(float(raw_val), floatfmt)
@@ -879,15 +866,11 @@ def _format(val, valtype, floatfmt, missingval="", has_invisible=True):
         return "{0}".format(val)
 
 
-def _align_header(
-    header, alignment, width, visible_width, is_multiline=False, width_fn=None
-):
+def _align_header(header, alignment, width, visible_width, is_multiline=False, width_fn=None):
     "Pad string header to width chars given known visible_width of the header."
     if is_multiline:
         header_lines = re.split(_multiline_codes, header)
-        padded_lines = [
-            _align_header(h, alignment, width, width_fn(h)) for h in header_lines
-        ]
+        padded_lines = [_align_header(h, alignment, width, width_fn(h)) for h in header_lines]
         return "\n".join(padded_lines)
     # else: not multiline
     ninvisible = len(header) - visible_width
@@ -966,9 +949,7 @@ def _normalize_tabular_data(tabular_data, headers, showindex="default"):
         if hasattr(tabular_data.values, "__call__"):
             # likely a conventional dict
             keys = tabular_data.keys()
-            rows = list(
-                izip_longest(*tabular_data.values())
-            )  # columns have to be transposed
+            rows = list(izip_longest(*tabular_data.values()))  # columns have to be transposed
         elif hasattr(tabular_data, "index"):
             # values is a property, has .index => it's likely a pandas.DataFrame (pandas 0.11.0)
             keys = list(tabular_data)
@@ -1036,9 +1017,7 @@ def _normalize_tabular_data(tabular_data, headers, showindex="default"):
                 else:
                     headers = []
             elif headers:
-                raise ValueError(
-                    "headers for a list of dicts is not a dict or a keyword"
-                )
+                raise ValueError("headers for a list of dicts is not a dict or a keyword")
             rows = [[row.get(k) for k in keys] for row in rows]
 
         elif (
@@ -1387,9 +1366,7 @@ def tabulate(
     """
     if tabular_data is None:
         tabular_data = []
-    list_of_lists, headers = _normalize_tabular_data(
-        tabular_data, headers, showindex=showindex
-    )
+    list_of_lists, headers = _normalize_tabular_data(tabular_data, headers, showindex=showindex)
 
     # empty values in the first column of RST tables should be escaped (issue #82)
     # "" should be escaped as "\\ " or ".."
@@ -1417,9 +1394,7 @@ def tabulate(
     numparses = _expand_numparse(disable_numparse, len(cols))
     coltypes = [_column_type(col, numparse=np) for col, np in zip(cols, numparses)]
     if isinstance(floatfmt, basestring):  # old version
-        float_formats = len(cols) * [
-            floatfmt
-        ]  # just duplicate the string to use in each column
+        float_formats = len(cols) * [floatfmt]  # just duplicate the string to use in each column
     else:  # if floatfmt is list, tuple etc we have one per column
         float_formats = list(floatfmt)
         if len(float_formats) < len(cols):
@@ -1441,9 +1416,7 @@ def tabulate(
         assert isinstance(colalign, Iterable)
         for idx, align in enumerate(colalign):
             aligns[idx] = align
-    minwidths = (
-        [width_fn(h) + MIN_PADDING for h in headers] if headers else [0] * len(cols)
-    )
+    minwidths = [width_fn(h) + MIN_PADDING for h in headers] if headers else [0] * len(cols)
     cols = [
         _align_column(c, a, minw, has_invisible, enable_widechars, is_multiline)
         for c, a, minw in zip(cols, aligns, minwidths)
@@ -1453,10 +1426,7 @@ def tabulate(
         # align headers and add headers
         t_cols = cols or [[""]] * len(headers)
         t_aligns = aligns or [stralign] * len(headers)
-        minwidths = [
-            max(minw, max(width_fn(cl) for cl in c))
-            for minw, c in zip(minwidths, t_cols)
-        ]
+        minwidths = [max(minw, max(width_fn(cl) for cl in c)) for minw, c in zip(minwidths, t_cols)]
         headers = [
             _align_header(h, a, minw, width_fn(h), is_multiline, width_fn)
             for h, a, minw in zip(headers, t_aligns, minwidths)
@@ -1519,16 +1489,12 @@ def _append_basic_row(lines, padded_cells, colwidths, colaligns, rowfmt):
     return lines
 
 
-def _append_multiline_row(
-    lines, padded_multiline_cells, padded_widths, colaligns, rowfmt, pad
-):
+def _append_multiline_row(lines, padded_multiline_cells, padded_widths, colaligns, rowfmt, pad):
     colwidths = [w - 2 * pad for w in padded_widths]
     cells_lines = [c.splitlines() for c in padded_multiline_cells]
     nlines = max(map(len, cells_lines))  # number of lines in the row
     # vertically pad cells where some lines are missing
-    cells_lines = [
-        (cl + [" " * w] * (nlines - len(cl))) for cl, w in zip(cells_lines, colwidths)
-    ]
+    cells_lines = [(cl + [" " * w] * (nlines - len(cl))) for cl, w in zip(cells_lines, colwidths)]
     lines_cells = [[cl[i] for cl in cells_lines] for i in range(nlines)]
     for ln in lines_cells:
         padded_ln = _pad_row(ln, pad)

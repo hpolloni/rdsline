@@ -4,3 +4,4 @@ mypy
 types-PyYAML
 black
 pylint
+pytest
