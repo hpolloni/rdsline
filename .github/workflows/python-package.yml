@@ -31,5 +31,5 @@ jobs:
       run: mypy rdsline
     - name: Formatting with black
       run: black rdsline
-    - name: Lint with pylint
-      run: pylint rdsline
+    #- name: Lint with pylint
+    #  run: pylint rdsline
