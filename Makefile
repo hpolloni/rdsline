@@ -3,7 +3,7 @@ check:
 	.venv/bin/python -m mypy rdsline
 	.venv/bin/python -m black rdsline
 	.venv/bin/python -m black --check rdsline
-	.venv/bin/python -m pylint rdsline
+#	.venv/bin/python -m pylint rdsline
 		
 setup-dev:
 	python -m venv .venv
