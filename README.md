@@ -4,11 +4,7 @@ This is a REPL for the RDS data API.
 ### Install
 ```
 $ pip install rdsline
-```
 
-Shu
-### Usage
-```
 $ rdsline --help
 usage: rdsline [-h] [--config CONFIG]
 
@@ -38,10 +34,9 @@ credentials:
   profile: default
 ```
 
-### Inside the REPL
+### Usage
 You can type `.help` to show what commands are available inside the REPL.
 ```
-python3 rdsline.py
 RDS-REPL -- Type .help for help
 > .help
 .quit - quits the REPL
