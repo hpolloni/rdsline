@@ -1,2 +1,6 @@
 boto3
-yaml
+pyyaml
+mypy
+types-PyYAML
+black
+pylint

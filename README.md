@@ -2,6 +2,8 @@
 This is a REPL for the RDS data API. 
 
 ### Install
+This is a Python 3 only package. Support for Python 2 is a non goal.
+
 ```
 $ pip install rdsline
 
@@ -14,7 +16,7 @@ optional arguments:
 ```
 
 ### Config file format
-You can see a template of the config file format in config.yaml. 
+You can see a template of the config file format in [config.yaml](https://github.com/hpolloni/rdsline/blob/master/config.yaml). 
 
 ```yaml
 # This is the only database type we support (currently)
@@ -61,9 +63,6 @@ This is a multi-line REPL. The end of command character is a semicolon `;` or an
 +------------+
 ```
 
+[Contributing](https://github.com/hpolloni/rdsline/blob/master/CONTRIBUTING.md)
+[MIT License](https://github.com/hpolloni/rdsline/blob/master/LICENSE.txt)
 
-### TODO
-* Wishlist: `brew install rdsline`
-* Testing
-* Static analysis
-* Other databases?
