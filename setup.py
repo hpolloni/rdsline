@@ -1,8 +1,11 @@
 from setuptools import setup
+import subprocess
+
+VERSION='0.4dev1'
 
 setup(
     name='rdsline',
-    version='0.3',
+    version=VERSION,
     author='Herman Polloni',
     author_email='hpolloni@gmail.com',
     description='The RDS REPL',
