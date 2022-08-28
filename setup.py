@@ -14,5 +14,5 @@ setup(
     },
     packages=['rdsline'],
     license="MIT",
-    install_requires=['pyyaml', 'boto3']
+    install_requires=['pyyaml', 'boto3', 'tabulate']
 )

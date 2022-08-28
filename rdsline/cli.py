@@ -5,7 +5,7 @@ import readline  # pylint: disable=unused-import
 import os
 import sys
 from platform import python_version_tuple
-from rdsline.tabulate import tabulate
+from tabulate import tabulate
 from rdsline import settings
 
 if python_version_tuple() < ("3", "7", "8"):
@@ -36,16 +36,21 @@ def main():
     print("Type .help for help")
     while not done:
         line = _read(prompt)
-        if line == ".help":
-            _show_help()
-        elif line == ".quit":
-            done = True
-        elif line.startswith(".config"):
-            (_, config_file) = line.split(" ")
-            connection = settings.from_file(os.path.expanduser(config_file))
-            connection.print()
-        elif line.startswith(".show"):
-            connection.print()
+        if line[0] == '.':
+            args = line.split(' ')
+            if args[0] == '.help':
+                _show_help()
+            elif args[0] == '.quit':
+                done = True
+            elif args[0] == '.show':
+                connection.print()
+            elif args[0] == '.config':
+                if len(args) != 2:
+                    print("ERROR: Expecting config file")
+                else:
+                    (_, config_file) = line.split(" ")
+                    connection = settings.from_file(os.path.expanduser(config_file))
+                    connection.print()
         elif line.endswith(";") or line == "":
             buffer += line
             if not connection.is_executable():
