@@ -34,4 +34,4 @@ jobs:
     - name: Lint with pylint
       run: pylint rdsline
     - name: Run tests
-      run: pytest
+      run: python -m pytest
