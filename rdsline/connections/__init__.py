@@ -2,7 +2,7 @@
 Connection abstract class.
 """
 from abc import ABC, abstractmethod
-from typing import Tuple, List
+from rdsline.results import StatementResult
 
 
 class Connection(ABC):
@@ -11,7 +11,7 @@ class Connection(ABC):
     """
 
     @abstractmethod
-    def execute(self, sql: str) -> Tuple[List[str], List[List[str]]]:
+    def execute(self, sql: str) -> StatementResult:
         """
         Executes a query using this connection.
         """
@@ -43,5 +43,5 @@ class NoopConnection(Connection):
     def print(self):
         print("No connection settings. Maybe you need to run .config")
 
-    def execute(self, sql: str) -> Tuple[List[str], List[List[str]]]:
+    def execute(self, sql: str) -> StatementResult:
         raise NotImplementedError("Execute in No op")

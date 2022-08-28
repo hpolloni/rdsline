@@ -1,7 +1,7 @@
 """
 Settings module for the cli.
 """
-import argparse
+import logging
 import yaml
 import boto3
 from rdsline.connections import NoopConnection
@@ -14,6 +14,7 @@ def _get_region(cluster_arn: str):
 
 
 def _client_provider(profile: str, region: str):
+    logging.debug("Setting aws credentials profile to %s - region: %s", profile, region)
     session = boto3.Session(profile_name=profile)
     return session.client("rds-data", region_name=region)
 
@@ -22,9 +23,11 @@ def from_file(file: str, client_provider=_client_provider):
     """
     Reads settings from a file.
     """
+    logging.debug("Reading configuration file from: %s", file)
     settings = {}
     with open(file, "r", encoding="utf-8") as stream:
         settings = yaml.safe_load(stream)
+    logging.debug("Settings: %s", settings)
     if settings["type"] != "rds-secretsmanager":
         raise Exception(f"Unsupported database connection type: {settings['type']}")
     region = _get_region(settings["cluster_arn"])
@@ -35,15 +38,11 @@ def from_file(file: str, client_provider=_client_provider):
     )
 
 
-def from_args():
+def from_args(args):
     """
     Reads settings from cli args.
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", type=str, required=False, help="Config file to read settings from"
-    )
-    args = parser.parse_args()
     if args.config is not None:
         return from_file(args.config)
+    logging.debug("No config. Set to null connector")
     return NoopConnection()

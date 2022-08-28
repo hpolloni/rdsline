@@ -1,8 +1,10 @@
 """
 Connection for RDS with a Secrets Manager secret.
 """
-from typing import Any, List, Tuple
+import logging
+from typing import Any
 from rdsline.connections import Connection
+from rdsline.results import DMLResult, QueryResult, StatementResult
 
 
 def _to_string(val: Any) -> str:
@@ -22,10 +24,14 @@ def _to_string(val: Any) -> str:
     return "UNKNOWN"
 
 
-def _to_table(response) -> Tuple[List[str], List[List[str]]]:
+def _to_result(response) -> StatementResult:
+    if "columnMetadata" not in response:
+        # Assumed to be a DML/DDL operation
+        if "numberOfRecordsUpdated" in response:
+            return DMLResult(response["numberOfRecordsUpdated"])
     headers = [col["name"] for col in response["columnMetadata"]]
     records = [[_to_string(value) for value in row] for row in response["records"]]
-    return (headers, records)
+    return QueryResult(headers, records)
 
 
 class RDSSecretsManagerConnection(Connection):
@@ -39,7 +45,8 @@ class RDSSecretsManagerConnection(Connection):
         self.database = database
         self.client = client
 
-    def execute(self, sql: str) -> Tuple[List[str], List[List[str]]]:
+    def execute(self, sql: str) -> StatementResult:
+        logging.debug("Executing query: %s", sql)
         response = self.client.execute_statement(
             resourceArn=self.cluster_arn,
             database=self.database,
@@ -47,7 +54,8 @@ class RDSSecretsManagerConnection(Connection):
             includeResultMetadata=True,
             sql=sql,
         )
-        return _to_table(response)
+        logging.debug("Got response: %s", response)
+        return _to_result(response)
 
     def is_executable(self) -> bool:
         return (
