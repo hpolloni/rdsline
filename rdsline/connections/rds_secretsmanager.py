@@ -65,8 +65,12 @@ class RDSSecretsManagerConnection(Connection):
             and self.client is not None
         )
 
-    def print(self):
-        print("Type: rds-secretsmanager")
-        print(f"Cluster arn: {self.cluster_arn}")
-        print(f"Secret arn: {self.secret_arn}")
-        print(f"Database: {self.database}")
+    def __str__(self):
+        return "\n".join(
+            [
+                "Type: rds-secretsmanager",
+                f"Cluster arn: {self.cluster_arn}",
+                f"Secret arn: {self.secret_arn}",
+                f"Database: {self.database}",
+            ]
+        )

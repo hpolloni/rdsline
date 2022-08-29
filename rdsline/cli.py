@@ -59,7 +59,7 @@ def main():
             elif args[0] == ".quit":
                 done = True
             elif args[0] == ".show":
-                connection.print()
+                print(connection)
             elif args[0] == ".debug":
                 if debug:
                     print("Debugging turned OFF")
@@ -75,16 +75,16 @@ def main():
                 else:
                     (_, config_file) = line.split(" ")
                     connection = settings.from_file(os.path.expanduser(config_file))
-                    connection.print()
+                    print(connection)
         elif line.endswith(";") or line == "":
             buffer += line
             if not connection.is_executable():
-                connection.print()
+                print(connection)
                 buffer = ""
                 prompt = ">"
                 continue
             try:
-                connection.execute(buffer).print()
+                print(connection.execute(buffer))
             except Exception as ex:  # pylint: disable=broad-except
                 print(f"Error: {str(ex)}")
             finally:

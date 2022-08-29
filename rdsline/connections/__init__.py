@@ -23,9 +23,9 @@ class Connection(ABC):
         """
 
     @abstractmethod
-    def print(self):
+    def __str__(self):
         """
-        Print the connection settings. Intended for use in the CLI.
+        Returns this connection as a string. Meant to be displayed.
         """
 
 
@@ -40,8 +40,8 @@ class NoopConnection(Connection):
     def is_executable(self) -> bool:
         return False
 
-    def print(self):
-        print("No connection settings. Maybe you need to run .config")
+    def __str__(self):
+        return "No connection settings. Maybe you need to run .config"
 
-    def execute(self, sql: str) -> StatementResult:
+    def execute(self, _: str) -> StatementResult:
         raise NotImplementedError("Execute in No op")

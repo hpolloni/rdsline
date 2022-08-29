@@ -13,9 +13,9 @@ class StatementResult(ABC):
     """
 
     @abstractmethod
-    def print(self):
+    def __str__(self):
         """
-        Print this query result.
+        This query result as a string. Used for printing it.
         """
 
 
@@ -28,8 +28,8 @@ class DMLResult(StatementResult):
     def __init__(self, number_updated: int):
         self.number_updated = number_updated
 
-    def print(self):
-        print(f"Number of record updated: {self.number_updated}")
+    def __str__(self):
+        return f"Number of record updated: {self.number_updated}"
 
 
 # pylint: disable=too-few-public-methods
@@ -42,5 +42,5 @@ class QueryResult(StatementResult):
         self.headers = headers
         self.rows = rows
 
-    def print(self):
-        print(tabulate(self.rows, headers=self.headers, tablefmt="psql"))
+    def __str__(self):
+        return tabulate(self.rows, headers=self.headers, tablefmt="psql")
