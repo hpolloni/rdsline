@@ -7,31 +7,37 @@ import readline  # pylint: disable=unused-import
 import os
 import sys
 from platform import python_version_tuple
+from typing import List
 from rdsline import settings
+from rdsline.connections import Connection
 
 
 if python_version_tuple() < ("3", "7", "8"):
     raise Exception("We don't support Python < 3.7.8")
 
 
-def _show_help():
-    print(".quit - quits the REPL")
-    print(".config <config_file> - sets new connection settings from a file")
-    print(".show - displays current connection settings")
-    print(".debug - toggle debugging information")
+def _help():
+    return "\n".join(
+        [
+            ".quit - quits the REPL",
+            ".config <config_file> - sets new connection settings from a file",
+            ".show - displays current connection settings",
+            ".debug - toggle debugging information",
+        ]
+    )
 
 
 def _read(prompt: str) -> str:
     try:
-        return input(f"{prompt} ")
+        line = input(f"{prompt} ")
+        if line == ".quit":
+            sys.exit(0)
+        return line
     except EOFError:
         sys.exit(0)
 
 
-def main():
-    """
-    The main entry point for the program.
-    """
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", type=str, required=False, help="Config file to read settings from"
@@ -39,52 +45,70 @@ def main():
     parser.add_argument(
         "--debug", required=False, action="store_true", help="Turn debugging information on."
     )
-    args = parser.parse_args()
-    debug = args.debug
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARN)
-    connection = settings.from_args(args)
-    done = False
+    return parser.parse_args()
+
+
+class DebugCommand:
+    """
+    Toggles debug logging on/off.
+    """
+
+    def __init__(self, is_debug: bool):
+        self.is_debug = is_debug
+        logging.basicConfig(level=logging.DEBUG if is_debug else logging.WARN)
+
+    def __call__(self, _):
+        self.is_debug = not self.is_debug
+        logging.getLogger().setLevel(logging.DEBUG if self.is_debug else logging.WARN)
+        return "Debugging is " + ("ON" if self.is_debug else "OFF")
+
+
+class ConfigCommand:
+    """
+    Config command.
+    """
+
+    def __init__(self, connection: Connection):
+        self.connection = connection
+
+    def __call__(self, args: List[str]) -> str:
+        if len(args) != 2:
+            return "ERROR: Expecting config file"
+        (_, config_file) = args
+        self.connection = settings.from_file(os.path.expanduser(config_file))
+        return str(self.connection)
+
+
+def main():
+    """
+    The main entry point for the program.
+    """
+    args = _parse_args()
+    config = ConfigCommand(settings.from_args(args))
+    commands = {
+        ".help": lambda _: _help(),
+        ".show": lambda _: str(config.connection),
+        ".debug": DebugCommand(args.debug),
+        ".config": config,
+    }
     buffer = ""
     prompt = ">"
     print("Type .help for help")
-    while not done:
+    while True:
         line = _read(prompt)
         if line[0] == ".":
             args = line.split(" ")
-            if args[0] == ".help":
-                _show_help()
-            elif args[0] == ".quit":
-                done = True
-            elif args[0] == ".show":
-                print(connection)
-            elif args[0] == ".debug":
-                if debug:
-                    print("Debugging turned OFF")
-                    logging.getLogger().setLevel(logging.WARN)
-                    debug = False
-                else:
-                    print("Debugging turned ON")
-                    logging.getLogger().setLevel(logging.DEBUG)
-                    debug = True
-            elif args[0] == ".config":
-                if len(args) != 2:
-                    print("ERROR: Expecting config file")
-                else:
-                    (_, config_file) = line.split(" ")
-                    connection = settings.from_file(os.path.expanduser(config_file))
-                    print(connection)
+            if args[0] in commands:
+                print(commands[args[0]](args))
         elif line.endswith(";") or line == "":
             buffer += line
-            if not connection.is_executable():
-                print(connection)
+            if not config.connection.is_executable():
+                print(config.connection)
                 buffer = ""
                 prompt = ">"
                 continue
             try:
-                print(connection.execute(buffer))
+                print(config.connection.execute(buffer))
             except Exception as ex:  # pylint: disable=broad-except
                 print(f"Error: {str(ex)}")
             finally:

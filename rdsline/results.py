@@ -6,7 +6,6 @@ from typing import List
 from tabulate import tabulate
 
 
-# pylint: disable=too-few-public-methods
 class StatementResult(ABC):
     """
     A statement result.
@@ -19,7 +18,6 @@ class StatementResult(ABC):
         """
 
 
-# pylint: disable=too-few-public-methods
 class DMLResult(StatementResult):
     """
     A DML/DDL result.
@@ -32,7 +30,6 @@ class DMLResult(StatementResult):
         return f"Number of record updated: {self.number_updated}"
 
 
-# pylint: disable=too-few-public-methods
 class QueryResult(StatementResult):
     """
     A query result.
