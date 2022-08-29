@@ -1,18 +1,16 @@
 from setuptools import setup
-import os
-
-VERSION=os.environ['PYPI_VERSION']
 
 setup(
     name='rdsline',
-    version=VERSION,
+    version='0.4.2',
     author='Herman Polloni',
     author_email='hpolloni@gmail.com',
     description='The RDS REPL',
     entry_points = {
         'console_scripts': ['rdsline=rdsline.cli:main']
     },
-    packages=['rdsline'],
+    packages=['rdsline', 'rdsline.connections'],
     license="MIT",
+    url='https://github.com/hpolloni/rdsline',
     install_requires=['pyyaml', 'boto3', 'tabulate']
 )

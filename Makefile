@@ -9,9 +9,3 @@ check:
 setup-dev:
 	python -m venv .venv
 	.venv/bin/python -m pip install -r requirements.txt
-
-dist: check
-	.venv/bin/python setup.py sdist
-
-pypi: dist
-	twine upload dist/rdsline-${PYPI_VERSION}.tar.gz
