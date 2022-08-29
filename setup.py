@@ -1,7 +1,7 @@
 from setuptools import setup
-import subprocess
+import os
 
-VERSION='0.4dev1'
+VERSION=os.environ['PYPI_VERSION']
 
 setup(
     name='rdsline',
