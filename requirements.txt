@@ -1,6 +1,8 @@
 boto3
 pyyaml
 mypy
+tabulate
+types-tabulate
 types-PyYAML
 black
 pylint
