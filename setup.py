@@ -12,5 +12,6 @@ setup(
     packages=['rdsline', 'rdsline.connections'],
     license="MIT",
     url='https://github.com/hpolloni/rdsline',
+    long_description='RDS REPL',
     install_requires=['pyyaml', 'boto3', 'tabulate']
 )
