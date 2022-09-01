@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='rdsline',
-    version='0.4.2',
+    version='0.4.3',
     author='Herman Polloni',
     author_email='hpolloni@gmail.com',
     description='The RDS REPL',

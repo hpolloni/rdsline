@@ -96,7 +96,7 @@ def main():
     print("Type .help for help")
     while True:
         line = _read(prompt)
-        if line[0] == ".":
+        if line and line[0] == ".":
             args = line.split(" ")
             if args[0] in commands:
                 print(commands[args[0]](args))
