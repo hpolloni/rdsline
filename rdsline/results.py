@@ -1,7 +1,6 @@
 """
 Statement result types.
 """
-from os import isatty
 import sys
 from abc import ABC, abstractmethod
 from typing import List
