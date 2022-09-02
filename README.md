@@ -13,9 +13,13 @@ usage: rdsline [-h] [--config CONFIG]
 optional arguments:
   -h, --help       show this help message and exit
   --config CONFIG  Config file to read settings from
+  --debug          Turn debugging information on
 ```
 
 ### Config file format
+`rdsline` reads configuration from a file. The default configuration file is `~/.rdsline`. You can also pass in a 
+config file using the `--config` argument. 
+
 You can see a template of the config file format in [config.yaml](https://github.com/hpolloni/rdsline/blob/master/config.yaml). 
 
 ```yaml

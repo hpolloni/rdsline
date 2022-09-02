@@ -29,7 +29,7 @@ def _help():
 
 def _read(prompt: str) -> str:
     try:
-        line = input(f"{prompt} ")
+        line = input(f"{prompt}")
         if line == ".quit":
             sys.exit(0)
         return line
@@ -92,8 +92,11 @@ def main():
         ".config": config,
     }
     buffer = ""
-    prompt = ">"
-    print("Type .help for help")
+    default_prompt = ""
+    if sys.stdin.isatty():
+        default_prompt = "> "
+        print("Type .help for help")
+    prompt = default_prompt
     while True:
         line = _read(prompt)
         if line and line[0] == ".":
@@ -105,7 +108,7 @@ def main():
             if not config.connection.is_executable():
                 print(config.connection)
                 buffer = ""
-                prompt = ">"
+                prompt = default_prompt
                 continue
             try:
                 print(config.connection.execute(buffer))
@@ -113,7 +116,7 @@ def main():
                 print(f"Error: {str(ex)}")
             finally:
                 buffer = ""
-                prompt = ">"
+                prompt = default_prompt
         else:
             buffer += line + " "
             prompt = "|"

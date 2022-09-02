@@ -1,6 +1,8 @@
 """
 Statement result types.
 """
+from os import isatty
+import sys
 from abc import ABC, abstractmethod
 from typing import List
 from tabulate import tabulate
@@ -40,4 +42,9 @@ class QueryResult(StatementResult):
         self.rows = rows
 
     def __str__(self):
-        return tabulate(self.rows, headers=self.headers, tablefmt="psql")
+        tablefmt = "psql"
+        headers = self.headers
+        if not sys.stdin.isatty():
+            tablefmt = "tsv"
+            headers = []
+        return tabulate(self.rows, headers=headers, tablefmt=tablefmt)

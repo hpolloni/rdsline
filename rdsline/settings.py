@@ -1,11 +1,14 @@
 """
 Settings module for the cli.
 """
+import os
 import logging
 import yaml
 import boto3
 from rdsline.connections import NoopConnection
 from rdsline.connections.rds_secretsmanager import RDSSecretsManagerConnection
+
+DEFAULT_CONFIG_FILE = os.path.expanduser("~/.rdsline")
 
 
 def _get_region(cluster_arn: str):
@@ -44,5 +47,7 @@ def from_args(args):
     """
     if args.config is not None:
         return from_file(args.config)
+    if os.path.exists(DEFAULT_CONFIG_FILE):
+        return from_file(DEFAULT_CONFIG_FILE)
     logging.debug("No config. Set to null connector")
     return NoopConnection()
