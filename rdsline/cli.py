@@ -9,6 +9,7 @@ import sys
 from platform import python_version_tuple
 from typing import List
 from rdsline import settings
+from rdsline.version import VERSION
 from rdsline.connections import Connection
 
 
@@ -38,7 +39,7 @@ def _read(prompt: str) -> str:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="The RDS REPL v" + VERSION)
     parser.add_argument(
         "--config", type=str, required=False, help="Config file to read settings from"
     )
@@ -95,6 +96,7 @@ def main():
     default_prompt = ""
     if sys.stdin.isatty():
         default_prompt = "> "
+        print("The RDS REPL v" + VERSION)
         print("Type .help for help")
     prompt = default_prompt
     while True:

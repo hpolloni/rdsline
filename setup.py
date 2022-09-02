@@ -1,8 +1,9 @@
 from setuptools import setup
+from rdsline.version import VERSION
 
 setup(
     name='rdsline',
-    version='0.4.3',
+    version=VERSION,
     author='Herman Polloni',
     author_email='hpolloni@gmail.com',
     description='The RDS REPL',
