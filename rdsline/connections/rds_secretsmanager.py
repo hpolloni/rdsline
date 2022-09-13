@@ -13,7 +13,7 @@ def _to_string(val: Any) -> str:
         "booleanValue": lambda v: str(v["booleanValue"]),
         "doubleValue": lambda v: str(v["doubleValue"]),
         "longValue": lambda v: str(v["longValue"]),
-        "blobValue": lambda v: "BLOB",
+        "blobValue": lambda v: "BLOB("+v["blobValue"].hex()+")",
         "arrayValue": lambda v: "ARRAY",
     }
     if "isNull" in val and val["isNull"]:
