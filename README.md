@@ -6,7 +6,6 @@ This is a Python 3 only package. Support for Python 2 is a non goal.
 
 #### Homebrew
 ```
-
 $ brew tap hpolloni/rdsline
 $ brew install rdsline
 ```
