@@ -1,57 +1,24 @@
-### RDS REPL
+# RDS REPL
 This is a REPL for the RDS data API. 
 
-### Install
-This is a Python 3 only package. Support for Python 2 is a non goal.
-
-#### Homebrew
-```
+## Install
+### Homebrew
+```bash
 $ brew tap hpolloni/rdsline
 $ brew install rdsline
 ```
 
-#### Pip
-```
+### Pip
+```bash
 $ pip install rdsline
 ```
 
-### Usage
-```
+## Usage
+`rdsline` reads configuration from a file. The default configuration file is `~/.rdsline`. You can also pass in a config file using the `--config` command line argument. 
 
-$ rdsline --help
-usage: rdsline [-h] [--config CONFIG]
+You can use [config.yaml](https://github.com/hpolloni/rdsline/blob/master/config.yaml) as a template.
 
-optional arguments:
-  -h, --help       show this help message and exit
-  --config CONFIG  Config file to read settings from
-  --debug          Turn debugging information on
-```
-
-### Config file format
-`rdsline` reads configuration from a file. The default configuration file is `~/.rdsline`. You can also pass in a 
-config file using the `--config` argument. 
-
-You can see a template of the config file format in [config.yaml](https://github.com/hpolloni/rdsline/blob/master/config.yaml). 
-
-```yaml
-# This is the only database type we support (currently)
-type: rds-secretsmanager
-
-# This is usually of the form: arn:aws:rds:<REGION>:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>
-cluster_arn: CLUSTER_ARN
-
-# This is usually of the form: arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:<SECRET_ID>
-secret_arn: SECRET_ARN
-
-# The database name. Hopefully self-explanatory
-database: DATABASE_NAME
-
-# AWS credentials (only profile settings for now)
-credentials:
-  profile: default
-```
-
-### Usage
+### Inside the REPL
 You can type `.help` to show what commands are available inside the REPL.
 ```
 RDS-REPL -- Type .help for help
@@ -76,6 +43,25 @@ This is a multi-line REPL. The end of command character is a semicolon `;` or an
 |------------|
 | hello      |
 +------------+
+```
+
+### Pipe redirection
+`rdsline` will automatically detect when its input is a pipe. In this mode, headers are ommitted and the output is changed to `TSV`. 
+
+For example:
+
+A costly way to ouput `hello`:
+```bash
+$ echo "select 'hello';" | rdsline
+hello
+```
+
+Or most complex queries:
+```bash
+$ echo "select * from users;" | rdsline
+1 hpolloni
+2 alice
+3 bob
 ```
 
 * [Contributing](https://github.com/hpolloni/rdsline/blob/master/CONTRIBUTING.md)
