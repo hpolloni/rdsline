@@ -4,8 +4,20 @@ This is a REPL for the RDS data API.
 ### Install
 This is a Python 3 only package. Support for Python 2 is a non goal.
 
+#### Homebrew
+```
+
+$ brew tap hpolloni/rdsline
+$ brew install rdsline
+```
+
+#### Pip
 ```
 $ pip install rdsline
+```
+
+### Usage
+```
 
 $ rdsline --help
 usage: rdsline [-h] [--config CONFIG]

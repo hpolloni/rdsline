@@ -6,15 +6,10 @@ import argparse
 import readline  # pylint: disable=unused-import
 import os
 import sys
-from platform import python_version_tuple
 from typing import List
 from rdsline import settings
 from rdsline.version import VERSION
 from rdsline.connections import Connection
-
-
-if python_version_tuple() < ("3", "7", "8"):
-    raise Exception("We don't support Python < 3.7.8")
 
 
 def _help():

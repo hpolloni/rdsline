@@ -3,3 +3,4 @@ __pycache__
 dist/
 rdsline.egg-info/
 .vscode
+test.yaml
