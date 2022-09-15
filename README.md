@@ -1,4 +1,4 @@
-# RDS REPL
+# rdsline
 This is a REPL for the RDS data API. 
 
 ## Install
