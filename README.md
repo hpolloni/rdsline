@@ -1,3 +1,6 @@
+[![Coverage Status](https://coveralls.io/repos/github/hpolloni/rdsline/badge.svg?branch=master)](https://coveralls.io/github/hpolloni/rdsline?branch=master)
+[![PyPI version](https://badge.fury.io/py/rdsline.svg)](https://badge.fury.io/py/rdsline)
+
 # rdsline
 This is a REPL for the RDS data API. 
 
