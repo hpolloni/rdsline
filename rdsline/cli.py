@@ -102,11 +102,6 @@ def main():
                 print(commands[args[0]](args))
         elif line.endswith(";") or line == "":
             buffer += line
-            if not config.connection.is_executable():
-                print(config.connection)
-                buffer = ""
-                prompt = default_prompt
-                continue
             try:
                 print(config.connection.execute(buffer))
             except Exception as ex:  # pylint: disable=broad-except

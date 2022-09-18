@@ -19,6 +19,18 @@ class StatementResult(ABC):
         """
 
 
+class NullResult(StatementResult):
+    """
+    A Null result is used to signal that whatever connection is not ready or that is not set.
+    """
+
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "No connection set. Maybe you need to run .config"
+
+
 class DMLResult(StatementResult):
     """
     A DML/DDL result.

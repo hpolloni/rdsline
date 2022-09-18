@@ -1,0 +1,10 @@
+# This is the only database type we support (currently)
+type: rds-secretsmanager
+
+secret_arn: arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>
+
+database: DATABASE_NAME
+
+# AWS credentials (only profile settings for now)
+credentials:
+  profile: default

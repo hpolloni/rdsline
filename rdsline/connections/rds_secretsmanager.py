@@ -13,7 +13,7 @@ def _to_string(val: Any) -> str:
         "booleanValue": lambda v: str(v["booleanValue"]),
         "doubleValue": lambda v: str(v["doubleValue"]),
         "longValue": lambda v: str(v["longValue"]),
-        "blobValue": lambda v: "BLOB("+v["blobValue"].hex()+")",
+        "blobValue": lambda v: "BLOB(" + v["blobValue"].hex() + ")",
         "arrayValue": lambda v: "ARRAY",
     }
     if "isNull" in val and val["isNull"]:
@@ -39,7 +39,7 @@ class RDSSecretsManagerConnection(Connection):
     Connection for RDS with secretsmanager.
     """
 
-    def __init__(self, cluster_arn: str, secret_arn: str, database: str, client):
+    def __init__(self, cluster_arn, secret_arn, database, client):
         self.cluster_arn = cluster_arn
         self.secret_arn = secret_arn
         self.database = database
@@ -56,21 +56,3 @@ class RDSSecretsManagerConnection(Connection):
         )
         logging.debug("Got response: %s", response)
         return _to_result(response)
-
-    def is_executable(self) -> bool:
-        return (
-            self.cluster_arn is not None
-            and self.secret_arn is not None
-            and self.database is not None
-            and self.client is not None
-        )
-
-    def __str__(self):
-        return "\n".join(
-            [
-                "Type: rds-secretsmanager",
-                f"Cluster arn: {self.cluster_arn}",
-                f"Secret arn: {self.secret_arn}",
-                f"Database: {self.database}",
-            ]
-        )
