@@ -34,4 +34,6 @@ jobs:
     - name: Lint with pylint
       run: pylint rdsline
     - name: Run coverage
-      run: coverage pytest
+      run: coverage run -m pytest
+    - name: Submit to coveralls
+      run: COVERALLS_REPO_TOKEN=${{ secrets.COVERALLS_REPO_TOKEN }} coveralls

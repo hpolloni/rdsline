@@ -8,3 +8,4 @@ black
 pylint
 pytest
 coverage
+coveralls
