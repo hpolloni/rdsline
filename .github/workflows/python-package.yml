@@ -33,5 +33,5 @@ jobs:
       run: black rdsline
     - name: Lint with pylint
       run: pylint rdsline
-    - name: Run tests
-      run: python -m pytest
+    - name: Run coverage
+      run: coverage pytest
