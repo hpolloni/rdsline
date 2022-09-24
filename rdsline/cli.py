@@ -3,7 +3,8 @@ The main entry point for rdsline.
 """
 import logging
 import argparse
-import readline  # pylint: disable=unused-import
+import readline
+import atexit
 import os
 import sys
 from typing import List
@@ -12,9 +13,25 @@ from rdsline.version import VERSION
 from rdsline.connections import Connection
 
 
+HISTORY_FILENAME = os.path.expanduser("~/.rdsline_history")
+
+
+def _load_history():
+    if os.path.exists(HISTORY_FILENAME):
+        readline.read_history_file(HISTORY_FILENAME)
+
+
+def _save_history():
+    readline.write_history_file(HISTORY_FILENAME)
+
+
+atexit.register(_save_history)
+
+
 def _help():
     return "\n".join(
         [
+            ".help - shows this help",
             ".quit - quits the REPL",
             ".config <config_file> - sets new connection settings from a file",
             ".show - displays current connection settings",
@@ -31,6 +48,8 @@ def _read(prompt: str) -> str:
         return line
     except EOFError:
         sys.exit(0)
+    except KeyboardInterrupt:
+        return ""
 
 
 def _parse_args() -> argparse.Namespace:
@@ -93,6 +112,7 @@ def main():
         default_prompt = "> "
         print("The RDS REPL v" + VERSION)
         print("Type .help for help")
+    _load_history()
     prompt = default_prompt
     while True:
         line = _read(prompt)
@@ -103,7 +123,8 @@ def main():
         elif line.endswith(";") or line == "":
             buffer += line
             try:
-                print(config.connection.execute(buffer))
+                if buffer:
+                    print(config.connection.execute(buffer))
             except Exception as ex:  # pylint: disable=broad-except
                 print(f"Error: {str(ex)}")
             finally:
