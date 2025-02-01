@@ -81,7 +81,7 @@ class Settings:
         else:
             # Convert old format to new format
             self.profiles = {DEFAULT_PROFILE: config}
-        
+
         # Set up initial connection
         self.switch_profile(DEFAULT_PROFILE)
 
@@ -110,6 +110,47 @@ class Settings:
     def get_current_profile(self) -> str:
         """Returns the name of the current profile."""
         return self.current_profile
+
+    def add_profile(self, profile_name: str, config: Dict) -> None:
+        """
+        Adds a new profile to the configuration.
+
+        Args:
+            profile_name: Name of the profile to add
+            config: Profile configuration dictionary containing:
+                   - type: Connection type (e.g., 'rds-secretsmanager')
+                   - cluster_arn: ARN of the RDS cluster
+                   - secret_arn: ARN of the Secrets Manager secret
+                   - database: Database name
+                   - credentials: Optional credentials configuration
+
+        Raises:
+            Exception: If the profile already exists or if required fields are missing
+        """
+        if profile_name in self.profiles:
+            raise Exception(f"Profile '{profile_name}' already exists")
+
+        required_fields = ["type", "cluster_arn", "secret_arn", "database"]
+        missing_fields = [field for field in required_fields if field not in config]
+        if missing_fields:
+            raise Exception(f"Missing required fields for profile: {', '.join(missing_fields)}")
+
+        if config["type"] != "rds-secretsmanager":
+            raise Exception(f"Unsupported database connection type: {config['type']}")
+
+        self.profiles[profile_name] = config
+
+    def save_to_file(self, file: str = DEFAULT_CONFIG_FILE) -> None:
+        """
+        Saves the current configuration to a file.
+
+        Args:
+            file: Path to save the configuration to. Defaults to ~/.rdsline
+        """
+        config = {"profiles": self.profiles}
+        os.makedirs(os.path.dirname(os.path.abspath(file)), exist_ok=True)
+        with open(file, "w", encoding="utf-8") as stream:
+            yaml.safe_dump(config, stream, default_flow_style=False)
 
 
 def from_file(file: str, client_provider=_default_client_provider) -> Connection:

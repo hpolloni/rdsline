@@ -126,3 +126,102 @@ def test_backward_compatibility(_: None) -> None:
     assert s.connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:123456789012:secret:old-secret'
     assert s.connection.database == 'old_db'
     assert s.connection.client == DUMMY_CLIENT
+
+
+def test_add_profile() -> None:
+    """Test adding a new profile."""
+    s = settings.Settings(client_provider=dummy_client_provider)
+    
+    new_profile = {
+        "type": "rds-secretsmanager",
+        "cluster_arn": "arn:aws:rds:us-west-2:123456789012:cluster:test-cluster",
+        "secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:test-secret",
+        "database": "test_db",
+        "credentials": {
+            "profile": "test"
+        }
+    }
+    
+    s.add_profile("test", new_profile)
+    assert "test" in s.profiles
+    assert s.profiles["test"] == new_profile
+
+
+def test_add_profile_duplicate() -> None:
+    """Test that adding a duplicate profile raises an exception."""
+    s = settings.Settings(client_provider=dummy_client_provider)
+    
+    profile = {
+        "type": "rds-secretsmanager",
+        "cluster_arn": "arn:aws:rds:us-west-2:123456789012:cluster:test-cluster",
+        "secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:test-secret",
+        "database": "test_db"
+    }
+    
+    s.add_profile("test", profile)
+    try:
+        s.add_profile("test", profile)
+        assert False, "Should have raised an exception"
+    except Exception as e:
+        assert "already exists" in str(e)
+
+
+def test_add_profile_missing_fields() -> None:
+    """Test that adding a profile with missing fields raises an exception."""
+    s = settings.Settings(client_provider=dummy_client_provider)
+    
+    profile = {
+        "type": "rds-secretsmanager",
+        "cluster_arn": "arn:aws:rds:us-west-2:123456789012:cluster:test-cluster",
+        # missing secret_arn and database
+    }
+    
+    try:
+        s.add_profile("test", profile)
+        assert False, "Should have raised an exception"
+    except Exception as e:
+        assert "Missing required fields" in str(e)
+        assert "secret_arn" in str(e)
+        assert "database" in str(e)
+
+
+def test_add_profile_invalid_type() -> None:
+    """Test that adding a profile with an invalid type raises an exception."""
+    s = settings.Settings(client_provider=dummy_client_provider)
+    
+    profile = {
+        "type": "invalid-type",
+        "cluster_arn": "arn:aws:rds:us-west-2:123456789012:cluster:test-cluster",
+        "secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:test-secret",
+        "database": "test_db"
+    }
+    
+    try:
+        s.add_profile("test", profile)
+        assert False, "Should have raised an exception"
+    except Exception as e:
+        assert "Unsupported database connection type" in str(e)
+
+
+@patch("builtins.open")
+@patch("yaml.safe_dump")
+def test_save_to_file(mock_safe_dump, mock_open) -> None:
+    """Test saving profiles to a file."""
+    s = settings.Settings(client_provider=dummy_client_provider)
+    
+    profile = {
+        "type": "rds-secretsmanager",
+        "cluster_arn": "arn:aws:rds:us-west-2:123456789012:cluster:test-cluster",
+        "secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:test-secret",
+        "database": "test_db"
+    }
+    
+    s.add_profile("test", profile)
+    s.save_to_file("test_config.yaml")
+    
+    mock_open.assert_called_once_with("test_config.yaml", "w", encoding="utf-8")
+    mock_safe_dump.assert_called_once()
+    dumped_config = mock_safe_dump.call_args[0][0]
+    assert "profiles" in dumped_config
+    assert "test" in dumped_config["profiles"]
+    assert dumped_config["profiles"]["test"] == profile
