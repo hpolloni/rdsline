@@ -1,12 +1,27 @@
-# This is the only database type we support (currently)
-type: rds-secretsmanager
+# Example configuration file for rdsline with multiple profiles
+profiles:
+  default:
+    # This is the only database type we support (currently)
+    type: rds-secretsmanager
+    cluster_arn: arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>
+    secret_arn: arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>
+    database: DATABASE_NAME
+    # AWS credentials (only profile settings for now)
+    credentials:
+      profile: default
 
-cluster_arn: arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>
+  staging:
+    type: rds-secretsmanager
+    cluster_arn: arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<STAGING_CLUSTER>
+    secret_arn: arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<STAGING_SECRET>
+    database: STAGING_DB
+    credentials:
+      profile: staging
 
-secret_arn: arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>
-
-database: DATABASE_NAME
-
-# AWS credentials (only profile settings for now)
-credentials:
-  profile: default
+  prod:
+    type: rds-secretsmanager
+    cluster_arn: arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<PROD_CLUSTER>
+    secret_arn: arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<PROD_SECRET>
+    database: PROD_DB
+    credentials:
+      profile: prod

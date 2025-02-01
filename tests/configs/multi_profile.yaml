@@ -1,0 +1,16 @@
+profiles:
+  default:
+    type: rds-secretsmanager
+    cluster_arn: arn:aws:rds:us-east-1:123456789012:cluster:default-cluster
+    secret_arn: arn:aws:secretsmanager:us-east-1:123456789012:secret:default-secret
+    database: default_db
+    credentials:
+      profile: default
+
+  staging:
+    type: rds-secretsmanager
+    cluster_arn: arn:aws:rds:us-west-2:123456789012:cluster:staging-cluster
+    secret_arn: arn:aws:secretsmanager:us-west-2:123456789012:secret:staging-secret
+    database: staging_db
+    credentials:
+      profile: staging

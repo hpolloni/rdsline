@@ -1,0 +1,7 @@
+# Old format (single profile)
+type: rds-secretsmanager
+cluster_arn: arn:aws:rds:us-east-1:123456789012:cluster:old-cluster
+secret_arn: arn:aws:secretsmanager:us-east-1:123456789012:secret:old-secret
+database: old_db
+credentials:
+  profile: default

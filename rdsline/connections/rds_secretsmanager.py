@@ -1,6 +1,7 @@
 """
 Connection for RDS with a Secrets Manager secret.
 """
+
 import logging
 from typing import Any
 from rdsline.connections import Connection
@@ -18,7 +19,7 @@ def _to_string(val: Any) -> str:
     }
     if "isNull" in val and val["isNull"]:
         return "NULL"
-    for (type_name, converter) in known_types.items():
+    for type_name, converter in known_types.items():
         if type_name in val:
             return converter(val)
     return "UNKNOWN"

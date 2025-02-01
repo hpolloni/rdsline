@@ -1,6 +1,7 @@
 """
 Statement result types.
 """
+
 import sys
 from abc import ABC, abstractmethod
 from typing import List

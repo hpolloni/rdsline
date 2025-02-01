@@ -1,6 +1,7 @@
 """
 Connection abstract class.
 """
+
 from abc import ABC, abstractmethod
 from rdsline.results import StatementResult, NullResult
 
