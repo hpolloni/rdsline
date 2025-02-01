@@ -7,7 +7,7 @@ import argparse
 import readline  # pylint: disable=unused-import
 import os
 import sys
-from typing import List, Optional, Any, Callable, Dict
+from typing import List, Any, Callable, Dict
 
 from rdsline import settings
 from rdsline.version import VERSION
@@ -229,10 +229,10 @@ def main() -> None:
     while True:
         line = _read(prompt)
         if line and line[0] == ".":
-            args = line.split(" ")
-            if args[0] in commands:
-                print(commands[args[0]](args))
-                if args[0] == ".profile" and sys.stdin.isatty():
+            cmd_args: List[str] = line.split(" ")
+            if cmd_args[0] in commands:
+                print(commands[cmd_args[0]](cmd_args))
+                if cmd_args[0] == ".profile" and sys.stdin.isatty():
                     default_prompt = f"{config.settings.get_current_profile()}> "
                     prompt = default_prompt
         elif line.endswith(";") or line == "":
