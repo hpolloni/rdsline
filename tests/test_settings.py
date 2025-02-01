@@ -9,13 +9,13 @@ class DummyClient:
 
 
 DUMMY_CLIENT = DummyClient()
-def dummy_client_provider(profile, region):
+def dummy_client_provider(profile: str, region: str) -> DummyClient:
     """Dummy client provider that accepts any profile/region combination."""
     return DUMMY_CLIENT
 
 
 @patch('rdsline.settings.create_boto3_session')
-def test_read_settings_from_file(_):
+def test_read_settings_from_file(_: None) -> None:
     connection = settings.from_file('config.yaml', client_provider=dummy_client_provider)
     assert connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
     assert connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>'
@@ -24,7 +24,7 @@ def test_read_settings_from_file(_):
 
 
 @patch('rdsline.settings.create_boto3_session')
-def test_fails_for_unknown_type(_):
+def test_fails_for_unknown_type(_: None) -> None:
     try:
         settings.from_file('tests/configs/unknown_type.yaml')
         assert False
@@ -33,7 +33,7 @@ def test_fails_for_unknown_type(_):
 
 
 @patch('rdsline.settings.create_boto3_session')
-def test_fails_for_missing_setting(_):
+def test_fails_for_missing_setting(_: None) -> None:
     try:
         settings.from_file('tests/configs/missing_cluster_arn.yaml')
         assert False
@@ -43,7 +43,7 @@ def test_fails_for_missing_setting(_):
 
 Args = namedtuple("Args", "config")
 @patch('rdsline.settings.create_boto3_session')
-def test_can_get_settings_from_args(_):
+def test_can_get_settings_from_args(_: None) -> None:
     args = Args("config.yaml")
     connection = settings.from_args(args, dummy_client_provider)
     assert connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
@@ -53,7 +53,7 @@ def test_can_get_settings_from_args(_):
 
 
 @patch('rdsline.settings.create_boto3_session')
-def test_gets_from_default_file(_):
+def test_gets_from_default_file(_: None) -> None:
     assert settings.DEFAULT_CONFIG_FILE == os.path.expanduser("~/.rdsline")
     args = Args(None)
     connection = settings.from_args(args, dummy_client_provider, default_config_file="config.yaml")
@@ -64,7 +64,7 @@ def test_gets_from_default_file(_):
 
 
 @patch('rdsline.settings.create_boto3_session')
-def test_gets_noop_if_else_fails(_):
+def test_gets_noop_if_else_fails(_: None) -> None:
     args = Args(None)
     connection = settings.from_args(args, dummy_client_provider, default_config_file="unexistant_file.yaml")
     assert type(connection) == NoopConnection
@@ -72,7 +72,7 @@ def test_gets_noop_if_else_fails(_):
 
 # New tests for multi-profile feature
 @patch('rdsline.settings.create_boto3_session')
-def test_multi_profile_settings(_):
+def test_multi_profile_settings(_: None) -> None:
     """Test the new Settings class with multiple profiles."""
     s = settings.Settings(client_provider=dummy_client_provider)
     s.load_from_file('tests/configs/multi_profile.yaml')
@@ -98,7 +98,7 @@ def test_multi_profile_settings(_):
 
 
 @patch('rdsline.settings.create_boto3_session')
-def test_multi_profile_invalid_profile(_):
+def test_multi_profile_invalid_profile(_: None) -> None:
     """Test handling of invalid profile names."""
     s = settings.Settings(client_provider=dummy_client_provider)
     s.load_from_file('tests/configs/multi_profile.yaml')
@@ -111,7 +111,7 @@ def test_multi_profile_invalid_profile(_):
 
 
 @patch('rdsline.settings.create_boto3_session')
-def test_backward_compatibility(_):
+def test_backward_compatibility(_: None) -> None:
     """Test that old single-profile config files still work."""
     s = settings.Settings(client_provider=dummy_client_provider)
     s.load_from_file('tests/configs/old_format.yaml')

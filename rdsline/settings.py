@@ -4,7 +4,7 @@ Settings module for the cli.
 
 import os
 import logging
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, List
 import yaml
 import boto3
 from rdsline.connections import NoopConnection, Connection
@@ -57,7 +57,7 @@ class Settings:
 
         Args:
             client_provider: Function that takes (profile: str, region: str) and returns
-                             an AWS client. Defaults to _default_client_provider.
+                           an AWS client. Defaults to _default_client_provider.
         """
         self.profiles: Dict[str, Dict] = {}
         self.current_profile: str = DEFAULT_PROFILE
@@ -81,7 +81,7 @@ class Settings:
         else:
             # Convert old format to new format
             self.profiles = {DEFAULT_PROFILE: config}
-
+        
         # Set up initial connection
         self.switch_profile(DEFAULT_PROFILE)
 
@@ -103,7 +103,7 @@ class Settings:
             self.profiles[profile_name], self._client_provider
         )
 
-    def get_profile_names(self) -> list[str]:
+    def get_profile_names(self) -> List[str]:
         """Returns list of available profile names."""
         return list(self.profiles.keys())
 

@@ -7,13 +7,14 @@ import argparse
 import readline  # pylint: disable=unused-import
 import os
 import sys
-from typing import List
+from typing import List, Optional, Any, Callable, Dict
+
 from rdsline import settings
 from rdsline.version import VERSION
 from rdsline.connections import Connection
 
 
-def _help():
+def _help() -> str:
     """
     Returns a string containing help information.
     """
@@ -81,7 +82,7 @@ class DebugCommand:
         self.is_debug = is_debug
         logging.basicConfig(level=logging.DEBUG if is_debug else logging.WARN)
 
-    def __call__(self, _):
+    def __call__(self, _: Any) -> str:
         """
         Toggles debugging on/off.
 
@@ -190,7 +191,7 @@ class ProfileCommand:
         return "\n".join(result)
 
 
-def main():
+def main() -> None:
     """
     The main entry point for the program.
     """
@@ -208,7 +209,7 @@ def main():
         config.settings.switch_profile(args.profile)
 
     profile_cmd = ProfileCommand(config)
-    commands = {
+    commands: Dict[str, Callable[[List[str]], str]] = {
         ".help": lambda _: _help(),
         ".show": lambda _: str(config.connection),
         ".debug": DebugCommand(args.debug),
