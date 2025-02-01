@@ -15,7 +15,7 @@ A powerful and interactive REPL (Read-Eval-Print Loop) for Amazon RDS Data API t
 
 ## Prerequisites
 
-- Python 3.6 or higher
+- Python 3.8 or higher
 - AWS credentials configured (`~/.aws/credentials` or environment variables)
 - Access to an Amazon RDS database
 - Required permissions for RDS Data API
