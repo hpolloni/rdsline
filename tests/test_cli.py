@@ -9,6 +9,7 @@ from rdsline.settings import Settings
 from rdsline.connections import NoopConnection
 from rdsline.ui import UI
 import yaml
+from tests.test_settings import dummy_client_provider
 
 
 def test_parse_args_defaults() -> None:
@@ -78,7 +79,7 @@ def test_help_command() -> None:
 def test_profile_command_switch() -> None:
     """Test switching profiles."""
     ui = UI(is_interactive=False)
-    settings_instance = Settings()
+    settings_instance = Settings(client_provider=dummy_client_provider, initial_profile=settings.DEFAULT_PROFILE)
     profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Test showing current connection when no profile name provided
@@ -103,7 +104,7 @@ def test_profile_command_switch() -> None:
 def test_profile_command_list() -> None:
     """Test listing profiles."""
     ui = UI(is_interactive=False)
-    settings_instance = Settings()
+    settings_instance = Settings(client_provider=dummy_client_provider, initial_profile=settings.DEFAULT_PROFILE)
     profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Test empty profiles
@@ -139,7 +140,7 @@ def test_profile_command_list() -> None:
 def test_profile_command_add_profile_success() -> None:
     """Test adding a new profile successfully."""
     ui = UI(is_interactive=False)
-    settings_instance = Settings()
+    settings_instance = Settings(client_provider=dummy_client_provider, initial_profile=settings.DEFAULT_PROFILE)
     profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Mock the input responses for interactive profile creation
@@ -178,7 +179,7 @@ def test_profile_command_add_profile_success() -> None:
 def test_profile_command_add_profile_defaults() -> None:
     """Test adding a new profile with default values."""
     ui = UI(is_interactive=False)
-    settings_instance = Settings()
+    settings_instance = Settings(client_provider=dummy_client_provider, initial_profile=settings.DEFAULT_PROFILE)
     profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Mock the input responses with empty values for defaults
@@ -209,7 +210,7 @@ def test_profile_command_add_profile_defaults() -> None:
 def test_profile_command_add_profile_cancel() -> None:
     """Test cancelling profile creation."""
     ui = UI(is_interactive=False)
-    settings_instance = Settings()
+    settings_instance = Settings(client_provider=dummy_client_provider, initial_profile=settings.DEFAULT_PROFILE)
     profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Mock the input responses but answer 'n' to confirmation
@@ -239,7 +240,7 @@ def test_profile_command_add_profile_cancel() -> None:
 def test_profile_command_add_profile_validation() -> None:
     """Test profile creation validation."""
     ui = UI(is_interactive=False)
-    settings_instance = Settings()
+    settings_instance = Settings(client_provider=dummy_client_provider, initial_profile=settings.DEFAULT_PROFILE)
     profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Test empty profile name
@@ -276,7 +277,7 @@ def test_profile_command_add_profile_validation() -> None:
 def test_profile_command_add_profile_keyboard_interrupt() -> None:
     """Test keyboard interrupt during profile creation."""
     ui = UI(is_interactive=False)
-    settings_instance = Settings()
+    settings_instance = Settings(client_provider=dummy_client_provider, initial_profile=settings.DEFAULT_PROFILE)
     profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     with patch.object(ui, "read_input", side_effect=KeyboardInterrupt()), \

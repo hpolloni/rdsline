@@ -6,7 +6,6 @@ import argparse
 import logging
 import os
 import sys
-import yaml
 
 from rdsline import settings
 from rdsline.ui import UI
@@ -146,8 +145,7 @@ class ProfileCommand:
             self.settings.profiles[name] = profile_info
 
             # Save the updated configuration
-            with open(settings.DEFAULT_CONFIG_FILE, "w", encoding="utf-8") as f:
-                yaml.dump({"profiles": self.settings.profiles}, f)
+            self.settings.save_to_file()
 
             self.ui.print(f"\nProfile '{name}' added successfully")
 
@@ -290,7 +288,9 @@ def main():
     """
     args = _parse_args()
     ui = UI(is_interactive=sys.stdin.isatty())
-    settings_instance = settings.Settings(initial_profile=args.profile)
+    settings_instance = settings.Settings(
+        client_provider=settings.default_client_provider, initial_profile=args.profile
+    )
 
     # Initialize with config file
     if args.config:

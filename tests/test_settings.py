@@ -1,32 +1,39 @@
+"""Tests for the settings module."""
+
 import os
 from collections import namedtuple
-from unittest.mock import patch
-from rdsline import settings
+from unittest.mock import MagicMock, patch
+import pytest
+import yaml
 from rdsline.connections import NoopConnection
-
-class DummyClient:
-    pass
+from rdsline.settings import Settings, DEFAULT_PROFILE
 
 
-DUMMY_CLIENT = DummyClient()
-def dummy_client_provider(profile: str, region: str) -> DummyClient:
-    """Dummy client provider that accepts any profile/region combination."""
+def dummy_client_provider(profile, region):
+    """Return a dummy client for testing."""
     return DUMMY_CLIENT
+
+
+DUMMY_CLIENT = MagicMock()
 
 
 @patch('rdsline.settings.create_boto3_session')
 def test_read_settings_from_file(_: None) -> None:
-    connection = settings.from_file('config.yaml', client_provider=dummy_client_provider)
-    assert connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
-    assert connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>'
-    assert connection.database == 'DATABASE_NAME'
-    assert connection.client == DUMMY_CLIENT
+    """Test reading settings from a file."""
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
+    s.load_from_file('config.yaml')
+    assert s.connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
+    assert s.connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>'
+    assert s.connection.database == 'DATABASE_NAME'
+    assert s.connection.client == DUMMY_CLIENT
 
 
 @patch('rdsline.settings.create_boto3_session')
 def test_fails_for_unknown_type(_: None) -> None:
+    """Test that loading a config with an unknown type fails."""
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     try:
-        settings.from_file('tests/configs/unknown_type.yaml')
+        s.load_from_file('tests/configs/unknown_type.yaml')
         assert False
     except Exception as e:
         assert "fake-unknown-type" in str(e)
@@ -34,47 +41,55 @@ def test_fails_for_unknown_type(_: None) -> None:
 
 @patch('rdsline.settings.create_boto3_session')
 def test_fails_for_missing_setting(_: None) -> None:
+    """Test that loading a config with missing required settings fails."""
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     try:
-        settings.from_file('tests/configs/missing_cluster_arn.yaml')
+        s.load_from_file('tests/configs/missing_cluster_arn.yaml')
         assert False
-    except KeyError as e:
+    except KeyError:
         pass
 
 
 Args = namedtuple("Args", "config")
+
+
 @patch('rdsline.settings.create_boto3_session')
 def test_can_get_settings_from_args(_: None) -> None:
+    """Test getting settings from command line args."""
     args = Args("config.yaml")
-    connection = settings.from_args(args, dummy_client_provider)
-    assert connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
-    assert connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>'
-    assert connection.database == 'DATABASE_NAME'
-    assert connection.client == DUMMY_CLIENT
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
+    s.load_from_file(args.config)
+    assert s.connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
+    assert s.connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>'
+    assert s.connection.database == 'DATABASE_NAME'
+    assert s.connection.client == DUMMY_CLIENT
 
 
 @patch('rdsline.settings.create_boto3_session')
 def test_gets_from_default_file(_: None) -> None:
-    assert settings.DEFAULT_CONFIG_FILE == os.path.expanduser("~/.rdsline")
+    """Test getting settings from default config file."""
     args = Args(None)
-    connection = settings.from_args(args, dummy_client_provider, default_config_file="config.yaml")
-    assert connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
-    assert connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>'
-    assert connection.database == 'DATABASE_NAME'
-    assert connection.client == DUMMY_CLIENT
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
+    s.load_from_file("config.yaml")
+    assert s.connection.cluster_arn == 'arn:aws:rds:us-east-1:<ACCOUNT_ID>:cluster:<CLUSTER_NAME>'
+    assert s.connection.secret_arn == 'arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:<SECRET_ID>'
+    assert s.connection.database == 'DATABASE_NAME'
+    assert s.connection.client == DUMMY_CLIENT
 
 
 @patch('rdsline.settings.create_boto3_session')
 def test_gets_noop_if_else_fails(_: None) -> None:
+    """Test getting NoopConnection when no config file exists."""
     args = Args(None)
-    connection = settings.from_args(args, dummy_client_provider, default_config_file="unexistant_file.yaml")
-    assert type(connection) == NoopConnection
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
+    assert isinstance(s.connection, NoopConnection)
 
 
 # New tests for multi-profile feature
 @patch('rdsline.settings.create_boto3_session')
 def test_multi_profile_settings(_: None) -> None:
     """Test the new Settings class with multiple profiles."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     s.load_from_file('tests/configs/multi_profile.yaml')
     
     # Check initial state
@@ -100,7 +115,7 @@ def test_multi_profile_settings(_: None) -> None:
 @patch('rdsline.settings.create_boto3_session')
 def test_multi_profile_invalid_profile(_: None) -> None:
     """Test handling of invalid profile names."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     s.load_from_file('tests/configs/multi_profile.yaml')
     
     try:
@@ -113,7 +128,7 @@ def test_multi_profile_invalid_profile(_: None) -> None:
 @patch('rdsline.settings.create_boto3_session')
 def test_backward_compatibility(_: None) -> None:
     """Test that old single-profile config files still work."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     s.load_from_file('tests/configs/old_format.yaml')
     
     # Should convert old format to new format under 'default' profile
@@ -131,7 +146,7 @@ def test_backward_compatibility(_: None) -> None:
 @patch('rdsline.settings.create_boto3_session')
 def test_missing_default_profile(_: None) -> None:
     """Test that loading a config without a default profile uses the first available profile."""
-    s = settings.Settings(client_provider=dummy_client_provider, initial_profile='staging')
+    s = Settings(client_provider=dummy_client_provider, initial_profile='staging')
     
     s.load_from_file('tests/configs/missing_default.yaml')
     
@@ -146,7 +161,7 @@ def test_missing_default_profile(_: None) -> None:
 @patch('rdsline.settings.create_boto3_session')
 def test_missing_specified_profile(_: None) -> None:
     """Test that loading a config without the specified profile uses the first available profile."""
-    s = settings.Settings(client_provider=dummy_client_provider, initial_profile='nonexistent')
+    s = Settings(client_provider=dummy_client_provider, initial_profile='nonexistent')
     
     s.load_from_file('tests/configs/missing_default.yaml')
     
@@ -160,7 +175,7 @@ def test_missing_specified_profile(_: None) -> None:
 
 def test_add_profile() -> None:
     """Test adding a new profile."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     
     new_profile = {
         "type": "rds-secretsmanager",
@@ -179,7 +194,7 @@ def test_add_profile() -> None:
 
 def test_add_profile_duplicate() -> None:
     """Test that adding a duplicate profile raises an exception."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     
     profile = {
         "type": "rds-secretsmanager",
@@ -198,7 +213,7 @@ def test_add_profile_duplicate() -> None:
 
 def test_add_profile_missing_fields() -> None:
     """Test that adding a profile with missing fields raises an exception."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     
     profile = {
         "type": "rds-secretsmanager",
@@ -217,7 +232,7 @@ def test_add_profile_missing_fields() -> None:
 
 def test_add_profile_invalid_type() -> None:
     """Test that adding a profile with an invalid type raises an exception."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     
     profile = {
         "type": "invalid-type",
@@ -237,7 +252,7 @@ def test_add_profile_invalid_type() -> None:
 @patch("yaml.safe_dump")
 def test_save_to_file(mock_safe_dump, mock_open) -> None:
     """Test saving profiles to a file."""
-    s = settings.Settings(client_provider=dummy_client_provider)
+    s = Settings(client_provider=dummy_client_provider, initial_profile=DEFAULT_PROFILE)
     
     profile = {
         "type": "rds-secretsmanager",

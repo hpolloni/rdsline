@@ -15,10 +15,12 @@ DEFAULT_PROFILE = "default"
 
 def create_boto3_session(profile):
     """Creates a boto3 session. Separated for testing."""
+    if profile is None:
+        return boto3.Session()
     return boto3.Session(profile_name=profile)
 
 
-def _default_client_provider(profile, region):
+def default_client_provider(profile, region):
     """Default provider that creates real AWS clients."""
     logging.debug("Setting aws credentials profile to %s - region: %s", profile, region)
     session = create_boto3_session(profile)
@@ -50,7 +52,7 @@ def _create_connection_from_profile(profile_config, client_provider):
 class Settings:
     """Manages multiple connection profiles."""
 
-    def __init__(self, client_provider=_default_client_provider, initial_profile=DEFAULT_PROFILE):
+    def __init__(self, client_provider, initial_profile):
         """
         Initialize Settings with a client provider.
 
@@ -155,28 +157,3 @@ class Settings:
         os.makedirs(os.path.dirname(os.path.abspath(file)), exist_ok=True)
         with open(file, "w", encoding="utf-8") as stream:
             yaml.safe_dump(config, stream, default_flow_style=False)
-
-
-def from_file(file, client_provider=_default_client_provider):
-    """
-    Reads settings from a file and returns the default connection.
-    Maintained for backward compatibility.
-    """
-    settings = Settings(client_provider)
-    settings.load_from_file(file)
-    return settings.connection
-
-
-def from_args(
-    args, client_provider=_default_client_provider, default_config_file=DEFAULT_CONFIG_FILE
-):
-    """
-    Reads settings from cli args.
-    Maintained for backward compatibility.
-    """
-    if args.config is not None:
-        return from_file(args.config, client_provider)
-    if os.path.exists(default_config_file):
-        return from_file(default_config_file, client_provider)
-    logging.debug("No config. Set to null connector")
-    return NoopConnection()
