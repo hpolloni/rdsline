@@ -128,6 +128,36 @@ def test_backward_compatibility(_: None) -> None:
     assert s.connection.client == DUMMY_CLIENT
 
 
+@patch('rdsline.settings.create_boto3_session')
+def test_missing_default_profile(_: None) -> None:
+    """Test that loading a config without a default profile uses the first available profile."""
+    s = settings.Settings(client_provider=dummy_client_provider, initial_profile='staging')
+    
+    s.load_from_file('tests/configs/missing_default.yaml')
+    
+    # Should use 'staging' profile since it was specified
+    assert s.get_current_profile() == 'staging'
+    assert s.connection.cluster_arn == 'arn:aws:rds:us-west-2:123456789012:cluster:staging-cluster'
+    assert s.connection.secret_arn == 'arn:aws:secretsmanager:us-west-2:123456789012:secret:staging-secret'
+    assert s.connection.database == 'staging_db'
+    assert s.connection.client == DUMMY_CLIENT
+
+
+@patch('rdsline.settings.create_boto3_session')
+def test_missing_specified_profile(_: None) -> None:
+    """Test that loading a config without the specified profile uses the first available profile."""
+    s = settings.Settings(client_provider=dummy_client_provider, initial_profile='nonexistent')
+    
+    s.load_from_file('tests/configs/missing_default.yaml')
+    
+    # Should use 'staging' profile since it's the only one available
+    assert s.get_current_profile() == 'staging'
+    assert s.connection.cluster_arn == 'arn:aws:rds:us-west-2:123456789012:cluster:staging-cluster'
+    assert s.connection.secret_arn == 'arn:aws:secretsmanager:us-west-2:123456789012:secret:staging-secret'
+    assert s.connection.database == 'staging_db'
+    assert s.connection.client == DUMMY_CLIENT
+
+
 def test_add_profile() -> None:
     """Test adding a new profile."""
     s = settings.Settings(client_provider=dummy_client_provider)

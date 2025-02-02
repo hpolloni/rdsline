@@ -290,17 +290,13 @@ def main():
     """
     args = _parse_args()
     ui = UI(is_interactive=sys.stdin.isatty())
-    settings_instance = settings.Settings()
+    settings_instance = settings.Settings(initial_profile=args.profile)
 
     # Initialize with config file
     if args.config:
         settings_instance.load_from_file(args.config)
     elif os.path.exists(settings.DEFAULT_CONFIG_FILE):
         settings_instance.load_from_file(settings.DEFAULT_CONFIG_FILE)
-
-    # Switch to initial profile if specified
-    if args.profile:
-        settings_instance.switch_profile(args.profile)
 
     profile_cmd = ProfileCommand(settings_instance, ui)
     commands = {

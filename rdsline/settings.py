@@ -50,16 +50,17 @@ def _create_connection_from_profile(profile_config, client_provider):
 class Settings:
     """Manages multiple connection profiles."""
 
-    def __init__(self, client_provider=_default_client_provider):
+    def __init__(self, client_provider=_default_client_provider, initial_profile=DEFAULT_PROFILE):
         """
         Initialize Settings with a client provider.
 
         Args:
             client_provider: Function that takes (profile: str, region: str) and returns
                            an AWS client. Defaults to _default_client_provider.
+            initial_profile: Initial profile to use. Defaults to DEFAULT_PROFILE.
         """
         self.profiles = {}
-        self.current_profile = DEFAULT_PROFILE
+        self.current_profile = initial_profile
         self.connection = NoopConnection()
         self._client_provider = client_provider
 
@@ -82,7 +83,11 @@ class Settings:
             self.profiles = {DEFAULT_PROFILE: config}
 
         # Set up initial connection
-        self.switch_profile(DEFAULT_PROFILE)
+        if self.current_profile in self.profiles:
+            self.switch_profile(self.current_profile)
+        elif self.profiles:
+            # If specified profile is not available, use the first available profile
+            self.switch_profile(next(iter(self.profiles)))
 
     def switch_profile(self, profile_name):
         """

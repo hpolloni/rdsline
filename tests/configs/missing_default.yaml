@@ -1,0 +1,6 @@
+profiles:
+  staging:
+    type: rds-secretsmanager
+    cluster_arn: arn:aws:rds:us-west-2:123456789012:cluster:staging-cluster
+    secret_arn: arn:aws:secretsmanager:us-west-2:123456789012:secret:staging-secret
+    database: staging_db
