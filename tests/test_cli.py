@@ -4,6 +4,7 @@ import os
 from unittest.mock import patch, MagicMock, mock_open, call
 import pytest
 from rdsline import cli
+from rdsline import settings
 from rdsline.settings import Settings
 from rdsline.connections import NoopConnection
 from rdsline.ui import UI
@@ -49,41 +50,48 @@ def test_debug_command() -> None:
         assert not debug.is_debug
 
 
-def test_config_command() -> None:
-    """Test the config command."""
-    ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    
-    # Test missing config file argument
-    with patch.object(ui, "display_error") as mock_error:
-        config([".config"])
-        mock_error.assert_called_once_with("Expecting config file")
-    
-    # Test with config file
-    with patch.object(Settings, "load_from_file") as mock_load, \
-         patch.object(ui, "print") as mock_print:
-        config([".config", "test_config.yaml"])
-        mock_load.assert_called_once_with(os.path.expanduser("test_config.yaml"))
-        mock_print.assert_called_once_with("Loaded configuration from test_config.yaml")
+def test_help_command() -> None:
+    """Test the HelpCommand class."""
+    ui = UI()
+    help_cmd = cli.HelpCommand(ui)
+
+    with patch.object(ui, "print") as mock_print:
+        help_cmd([".help"])
+
+        # Verify that help text contains all available commands
+        help_text = mock_print.call_args[0][0]
+        assert ".quit" in help_text
+        assert ".debug" in help_text
+        assert ".profile" in help_text
+        assert ".profiles" in help_text
+        assert ".addprofile" in help_text
+        assert ".config" not in help_text  # Verify removed command is not present
+
+        # Verify command descriptions
+        assert "quits the REPL" in help_text
+        assert "toggle debugging information" in help_text
+        assert "show current connection or switch to a different profile" in help_text
+        assert "list available profiles" in help_text
+        assert "add a new profile" in help_text
 
 
 def test_profile_command_switch() -> None:
     """Test switching profiles."""
     ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    profile_cmd = cli.ProfileCommand(config, ui)
-    
+    settings_instance = Settings()
+    profile_cmd = cli.ProfileCommand(settings_instance, ui)
+
     # Test showing current connection when no profile name provided
     with patch.object(ui, "print") as mock_print:
         profile_cmd.switch_profile([".profile"])
         mock_print.assert_called_once()
         assert "NoopConnection" in mock_print.call_args[0][0]
-    
+
     # Test switching to non-existent profile
     with patch.object(ui, "display_error") as mock_error:
         profile_cmd.switch_profile([".profile", "nonexistent"])
         mock_error.assert_called_once()
-    
+
     # Test switching to existing profile
     with patch.object(Settings, "switch_profile") as mock_switch, \
          patch.object(ui, "print") as mock_print:
@@ -95,16 +103,16 @@ def test_profile_command_switch() -> None:
 def test_profile_command_list() -> None:
     """Test listing profiles."""
     ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    profile_cmd = cli.ProfileCommand(config, ui)
-    
+    settings_instance = Settings()
+    profile_cmd = cli.ProfileCommand(settings_instance, ui)
+
     # Test empty profiles
     with patch.object(ui, "print") as mock_print:
         profile_cmd.list_profiles([".profiles"])
         mock_print.assert_called_once_with("No profiles configured")
-    
+
     # Test with profiles
-    config.settings.profiles = {
+    settings_instance.profiles = {
         "default": {
             "type": "rds-secretsmanager",
             "cluster_arn": "default_arn",
@@ -131,9 +139,8 @@ def test_profile_command_list() -> None:
 def test_profile_command_add_profile_success() -> None:
     """Test adding a new profile successfully."""
     ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config, ui)
+    settings_instance = Settings()
+    profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Mock the input responses for interactive profile creation
     input_responses = [
@@ -149,21 +156,21 @@ def test_profile_command_add_profile_success() -> None:
     with patch.object(ui, "read_input", side_effect=input_responses), \
          patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()) as mock_file:
-        
+
         profile_cmd.add_profile([])
-        
-        assert "test_profile" in config.settings.profiles
-        
-        profile = config.settings.profiles["test_profile"]
+
+        assert "test_profile" in settings_instance.profiles
+
+        profile = settings_instance.profiles["test_profile"]
         assert profile["type"] == "rds-secretsmanager"
         assert profile["cluster_arn"] == "arn:aws:rds:us-west-2:123456789012:cluster:test-cluster"
         assert profile["secret_arn"] == "arn:aws:secretsmanager:us-west-2:123456789012:secret:test-secret"
         assert profile["database"] == "test_db"
         assert profile["credentials"]["profile"] == "test_aws_profile"
-        
+
         # Verify the file was opened for writing
-        mock_file.assert_called_once_with("test_config.yaml", "w", encoding="utf-8")
-        
+        mock_file.assert_called_once_with(settings.DEFAULT_CONFIG_FILE, "w", encoding="utf-8")
+
         # Verify the final success message
         assert mock_print.call_args_list[-1] == call("\nProfile 'test_profile' added successfully")
 
@@ -171,9 +178,8 @@ def test_profile_command_add_profile_success() -> None:
 def test_profile_command_add_profile_defaults() -> None:
     """Test adding a new profile with default values."""
     ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config, ui)
+    settings_instance = Settings()
+    profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Mock the input responses with empty values for defaults
     input_responses = [
@@ -189,13 +195,13 @@ def test_profile_command_add_profile_defaults() -> None:
     with patch.object(ui, "read_input", side_effect=input_responses), \
          patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()):
-        
+
         profile_cmd.add_profile([])
-        
-        profile = config.settings.profiles["test_profile"]
+
+        profile = settings_instance.profiles["test_profile"]
         assert profile["type"] == "rds-secretsmanager"  # default type
         assert profile["credentials"]["profile"] == "default"  # default AWS profile
-        
+
         # Verify the final success message
         assert mock_print.call_args_list[-1] == call("\nProfile 'test_profile' added successfully")
 
@@ -203,9 +209,8 @@ def test_profile_command_add_profile_defaults() -> None:
 def test_profile_command_add_profile_cancel() -> None:
     """Test cancelling profile creation."""
     ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config, ui)
+    settings_instance = Settings()
+    profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Mock the input responses but answer 'n' to confirmation
     input_responses = [
@@ -221,22 +226,21 @@ def test_profile_command_add_profile_cancel() -> None:
     with patch.object(ui, "read_input", side_effect=input_responses), \
          patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()) as mock_file:
-        
+
         profile_cmd.add_profile([])
-        
-        assert "test_profile" not in config.settings.profiles
+
+        assert "test_profile" not in settings_instance.profiles
         mock_file.assert_not_called()
-        
+
         # Verify the cancellation message
         assert mock_print.call_args_list[-1] == call("Profile creation cancelled")
 
 
 def test_profile_command_add_profile_validation() -> None:
-    """Test validation of profile inputs."""
+    """Test profile creation validation."""
     ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config, ui)
+    settings_instance = Settings()
+    profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     # Test empty profile name
     with patch.object(ui, "read_input", return_value=""), \
@@ -260,7 +264,7 @@ def test_profile_command_add_profile_validation() -> None:
         ["test_profile", "rds-secretsmanager", "cluster", "", "db"],  # empty secret ARN
         ["test_profile", "rds-secretsmanager", "cluster", "secret", ""]  # empty database
     ]
-    
+
     for inputs in required_field_tests:
         with patch.object(ui, "read_input", side_effect=inputs), \
              patch.object(ui, "display_error") as mock_error:
@@ -270,48 +274,20 @@ def test_profile_command_add_profile_validation() -> None:
 
 
 def test_profile_command_add_profile_keyboard_interrupt() -> None:
-    """Test handling of KeyboardInterrupt during profile creation."""
+    """Test keyboard interrupt during profile creation."""
     ui = UI(is_interactive=False)
-    config = cli.ConfigCommand(ui)
-    config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config, ui)
+    settings_instance = Settings()
+    profile_cmd = cli.ProfileCommand(settings_instance, ui)
 
     with patch.object(ui, "read_input", side_effect=KeyboardInterrupt()), \
          patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()) as mock_file:
-        
+
         profile_cmd.add_profile([])
-        
+
         # Verify the cancellation message
         assert mock_print.call_args_list[-1] == call("Profile creation cancelled")
         mock_file.assert_not_called()
-
-
-def test_help_command() -> None:
-    """Test the HelpCommand class."""
-    ui = UI()
-    help_cmd = cli.HelpCommand(ui)
-
-    with patch.object(ui, "print") as mock_print:
-        help_cmd([".help"])
-        
-        # Verify that help text contains all available commands
-        help_text = mock_print.call_args[0][0]
-        assert ".quit" in help_text
-        assert ".config" in help_text
-        assert ".debug" in help_text
-        assert ".profile" in help_text
-        assert ".profiles" in help_text
-        assert ".addprofile" in help_text
-        assert ".show" not in help_text  # Verify removed command is not present
-
-        # Verify command descriptions
-        assert "quits the REPL" in help_text
-        assert "sets new connection settings from a file" in help_text
-        assert "toggle debugging information" in help_text
-        assert "show current connection or switch to a different profile" in help_text
-        assert "list available profiles" in help_text
-        assert "add a new profile interactively" in help_text
 
 
 @patch("sys.stdin")

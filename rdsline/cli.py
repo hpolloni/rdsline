@@ -5,14 +5,12 @@ The main entry point for rdsline.
 import argparse
 import logging
 import os
-import readline  # pylint: disable=unused-import
 import sys
 from typing import Any, Dict, List, Callable
 
 import yaml
 
 from rdsline import settings
-from rdsline.connections import Connection
 from rdsline.ui import UI
 from rdsline.version import VERSION
 
@@ -32,7 +30,6 @@ class HelpCommand:
         help_text = "\n".join(
             [
                 ".quit - quits the REPL",
-                ".config <config_file> - sets new connection settings from a file",
                 ".debug - toggle debugging information",
                 ".profile [name] - show current connection or switch to a different profile",
                 ".profiles - list available profiles",
@@ -40,24 +37,6 @@ class HelpCommand:
             ]
         )
         self.ui.print(help_text)
-
-
-def _parse_args() -> argparse.Namespace:
-    """
-    Parses command line arguments.
-
-    Returns:
-    argparse.Namespace: The parsed arguments.
-    """
-    parser = argparse.ArgumentParser(description="The RDS REPL v" + VERSION)
-    parser.add_argument(
-        "--config", type=str, required=False, help="Config file to read settings from"
-    )
-    parser.add_argument("--profile", type=str, required=False, help="Initial profile to use")
-    parser.add_argument(
-        "--debug", required=False, action="store_true", help="Turn debugging information on."
-    )
-    return parser.parse_args()
 
 
 class DebugCommand:
@@ -89,72 +68,20 @@ class DebugCommand:
         self.ui.print("Debugging is " + ("ON" if self.is_debug else "OFF"))
 
 
-class ConfigCommand:
-    """
-    Handles configuration file loading and display.
-    """
-
-    def __init__(self, ui: UI):
-        """
-        Initialize with empty settings.
-
-        Args:
-            ui (UI): The UI instance to use for output.
-        """
-        self.settings = settings.Settings()
-        self.config_file: str = ""
-        self.ui = ui
-
-    def load_config(self, args: List[str]) -> None:
-        """
-        Load configuration from a file.
-
-        Args:
-        args (List[str]): The arguments to the command.
-        """
-        if len(args) < 2:
-            self.ui.display_error("Expecting config file")
-            return
-
-        config_file = args[1]
-        self.config_file = os.path.expanduser(config_file)
-        self.settings.load_from_file(self.config_file)
-        self.ui.print(f"Loaded configuration from {config_file}")
-
-    def __call__(self, args: List[str]) -> None:
-        """
-        Handle configuration commands.
-
-        Args:
-        args (List[str]): The arguments to the command.
-        """
-        self.load_config(args)
-
-    @property
-    def connection(self) -> Connection:
-        """
-        Gets the current connection.
-
-        Returns:
-        Connection: The current connection.
-        """
-        return self.settings.connection
-
-
 class ProfileCommand:
     """
     Profile management commands.
     """
 
-    def __init__(self, config: ConfigCommand, ui: UI):
+    def __init__(self, settings_instance: settings.Settings, ui: UI):
         """
         Initializes the ProfileCommand.
 
         Args:
-        config (ConfigCommand): The ConfigCommand to use.
+        settings_instance (Settings): The Settings instance to use.
         ui (UI): The UI instance to use for output.
         """
-        self.config = config
+        self.settings = settings_instance
         self.ui = ui
 
     def switch_profile(self, args: List[str]) -> None:
@@ -165,7 +92,7 @@ class ProfileCommand:
         args (List[str]): The arguments to the command.
         """
         if len(args) == 1:
-            self.ui.print(str(self.config.connection))
+            self.ui.print(str(self.settings.connection))
             return
 
         if len(args) != 2:
@@ -174,7 +101,7 @@ class ProfileCommand:
 
         profile_name = args[1]
         try:
-            self.config.settings.switch_profile(profile_name)
+            self.settings.switch_profile(profile_name)
             self.ui.print(f"Switched to profile: {profile_name}")
         except Exception as ex:
             self.ui.display_error(str(ex))
@@ -186,8 +113,8 @@ class ProfileCommand:
         Args:
         _ (List[str]): Ignored.
         """
-        profiles = self.config.settings.get_profile_names()
-        current = self.config.settings.get_current_profile()
+        profiles = self.settings.get_profile_names()
+        current = self.settings.get_current_profile()
 
         if not profiles:
             self.ui.print("No profiles configured")
@@ -207,7 +134,7 @@ class ProfileCommand:
             profile_info = self._get_profile_info()
             name = profile_info["name"]
 
-            if name in self.config.settings.profiles:
+            if name in self.settings.profiles:
                 self.ui.display_error(f"Profile '{name}' already exists")
                 return
 
@@ -218,15 +145,11 @@ class ProfileCommand:
 
             # Save the profile
             del profile_info["name"]  # Remove name from the profile data
-            self.config.settings.profiles[name] = profile_info
+            self.settings.profiles[name] = profile_info
 
             # Save the updated configuration
-            if not self.config.config_file:
-                self.ui.display_error("No config file set")
-                return
-
-            with open(self.config.config_file, "w", encoding="utf-8") as f:
-                yaml.dump({"profiles": self.config.settings.profiles}, f)
+            with open(settings.DEFAULT_CONFIG_FILE, "w", encoding="utf-8") as f:
+                yaml.dump({"profiles": self.settings.profiles}, f)
 
             self.ui.print(f"\nProfile '{name}' added successfully")
 
@@ -317,14 +240,34 @@ class ProfileCommand:
         return confirm == "y"
 
 
-def _handle_sql_command(line: str, buffer: str, ui: UI, config: ConfigCommand) -> tuple[str, str]:
+def _parse_args() -> argparse.Namespace:
+    """
+    Parses command line arguments.
+
+    Returns:
+    argparse.Namespace: The parsed arguments.
+    """
+    parser = argparse.ArgumentParser(description="The RDS REPL v" + VERSION)
+    parser.add_argument(
+        "--config", type=str, required=False, help="Config file to read settings from"
+    )
+    parser.add_argument("--profile", type=str, required=False, help="Initial profile to use")
+    parser.add_argument(
+        "--debug", required=False, action="store_true", help="Turn debugging information on."
+    )
+    return parser.parse_args()
+
+
+def _handle_sql_command(
+    line: str, buffer: str, ui: UI, settings_instance: settings.Settings
+) -> tuple[str, str]:
     """Handle SQL command input.
 
     Args:
         line: The input line
         buffer: The current SQL buffer
         ui: The UI instance
-        config: The configuration instance
+        settings_instance: The settings instance
 
     Returns:
         tuple[str, str]: Updated buffer and prompt
@@ -332,39 +275,17 @@ def _handle_sql_command(line: str, buffer: str, ui: UI, config: ConfigCommand) -
     if line.endswith(";") or line == "":
         buffer += line
         try:
-            result = config.connection.execute(buffer)
+            result = settings_instance.connection.execute(buffer)
             ui.print(str(result))
         except Exception as ex:  # pylint: disable=broad-except
             ui.display_error(str(ex))
         finally:
             buffer = ""
-            prompt = f"{config.settings.get_current_profile()}> "
+            prompt = f"{settings_instance.get_current_profile()}> "
     else:
         buffer += line + " "
         prompt = "|"
     return buffer, prompt
-
-
-def _handle_dot_command(
-    line: str, ui: UI, config: ConfigCommand, commands: Dict[str, Callable[[List[str]], None]]
-) -> str:
-    """Handle dot command input.
-
-    Args:
-        line: The input line
-        ui: The UI instance
-        config: The configuration instance
-        commands: The commands dictionary
-
-    Returns:
-        str: Updated prompt
-    """
-    cmd_args: List[str] = line.split(" ")
-    if cmd_args[0] in commands:
-        commands[cmd_args[0]](cmd_args)
-        if cmd_args[0] == ".profile" and ui.is_interactive:
-            return f"{config.settings.get_current_profile()}> "
-    return f"{config.settings.get_current_profile()}> "
 
 
 def main() -> None:
@@ -373,30 +294,29 @@ def main() -> None:
     """
     args = _parse_args()
     ui = UI(is_interactive=sys.stdin.isatty())
-    config = ConfigCommand(ui)
+    settings_instance = settings.Settings()
 
     # Initialize with config file
     if args.config:
-        config(["config", args.config])
+        settings_instance.load_from_file(args.config)
     elif os.path.exists(settings.DEFAULT_CONFIG_FILE):
-        config(["config", settings.DEFAULT_CONFIG_FILE])
+        settings_instance.load_from_file(settings.DEFAULT_CONFIG_FILE)
 
     # Switch to initial profile if specified
     if args.profile:
-        config.settings.switch_profile(args.profile)
+        settings_instance.switch_profile(args.profile)
 
-    profile_cmd = ProfileCommand(config, ui)
+    profile_cmd = ProfileCommand(settings_instance, ui)
     commands: Dict[str, Callable[[List[str]], None]] = {
         ".help": HelpCommand(ui),
         ".debug": DebugCommand(args.debug, ui),
-        ".config": config,
         ".profile": profile_cmd.switch_profile,
         ".profiles": profile_cmd.list_profiles,
         ".addprofile": profile_cmd.add_profile,
     }
 
     buffer = ""
-    prompt = f"{config.settings.get_current_profile()}> "
+    prompt = f"{settings_instance.get_current_profile()}> "
 
     while True:
         try:
@@ -405,9 +325,13 @@ def main() -> None:
                 continue
 
             if line[0] == ".":
-                prompt = _handle_dot_command(line, ui, config, commands)
+                cmd_args: List[str] = line.split(" ")
+                if cmd_args[0] in commands:
+                    commands[cmd_args[0]](cmd_args)
+                    if cmd_args[0] == ".profile" and ui.is_interactive:
+                        prompt = f"{settings_instance.get_current_profile()}> "
             else:
-                buffer, prompt = _handle_sql_command(line, buffer, ui, config)
+                buffer, prompt = _handle_sql_command(line, buffer, ui, settings_instance)
         except EOFError:
             sys.exit(0)
         except KeyboardInterrupt:

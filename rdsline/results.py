@@ -29,7 +29,7 @@ class NullResult(StatementResult):
         pass
 
     def __str__(self):
-        return "No connection set. Maybe you need to run .config"
+        return "No connection set."
 
 
 class DMLResult(StatementResult):

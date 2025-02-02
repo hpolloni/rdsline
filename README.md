@@ -67,7 +67,6 @@ Inside the REPL, you have access to several dot commands:
 ```
 .help    - Display available commands
 .quit    - Exit the REPL
-.config  - Load new connection settings from a file
 .profile - Manage and switch between different connection profiles
 .debug   - Toggle debug mode for troubleshooting
 ```
