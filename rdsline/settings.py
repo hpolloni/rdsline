@@ -4,34 +4,33 @@ Settings module for the cli.
 
 import os
 import logging
-from typing import Dict, Callable, Any, List
 import yaml
 import boto3
-from rdsline.connections import NoopConnection, Connection
+from rdsline.connections import NoopConnection
 from rdsline.connections.rds_secretsmanager import RDSSecretsManagerConnection
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.rdsline")
 DEFAULT_PROFILE = "default"
 
 
-def create_boto3_session(profile: str) -> Any:
+def create_boto3_session(profile):
     """Creates a boto3 session. Separated for testing."""
     return boto3.Session(profile_name=profile)
 
 
-def _default_client_provider(profile: str, region: str) -> Any:
+def _default_client_provider(profile, region):
     """Default provider that creates real AWS clients."""
     logging.debug("Setting aws credentials profile to %s - region: %s", profile, region)
     session = create_boto3_session(profile)
     return session.client("rds-data", region_name=region)
 
 
-def _get_region(cluster_arn: str) -> str:
+def _get_region(cluster_arn):
     arn_parts = cluster_arn.split(":")
     return arn_parts[3]
 
 
-def _create_connection_from_profile(profile_config: Dict, client_provider: Callable) -> Connection:
+def _create_connection_from_profile(profile_config, client_provider):
     """Creates a connection from a profile configuration."""
     if profile_config.get("type") != "rds-secretsmanager":
         raise Exception(f"Unsupported database connection type: {profile_config.get('type')}")
@@ -51,7 +50,7 @@ def _create_connection_from_profile(profile_config: Dict, client_provider: Calla
 class Settings:
     """Manages multiple connection profiles."""
 
-    def __init__(self, client_provider: Callable = _default_client_provider):
+    def __init__(self, client_provider=_default_client_provider):
         """
         Initialize Settings with a client provider.
 
@@ -59,12 +58,12 @@ class Settings:
             client_provider: Function that takes (profile: str, region: str) and returns
                            an AWS client. Defaults to _default_client_provider.
         """
-        self.profiles: Dict[str, Dict] = {}
-        self.current_profile: str = DEFAULT_PROFILE
-        self.connection: Connection = NoopConnection()
+        self.profiles = {}
+        self.current_profile = DEFAULT_PROFILE
+        self.connection = NoopConnection()
         self._client_provider = client_provider
 
-    def load_from_file(self, file: str) -> None:
+    def load_from_file(self, file):
         """
         Loads settings from a file.
 
@@ -85,7 +84,7 @@ class Settings:
         # Set up initial connection
         self.switch_profile(DEFAULT_PROFILE)
 
-    def switch_profile(self, profile_name: str) -> None:
+    def switch_profile(self, profile_name):
         """
         Switches to a different profile.
 
@@ -103,15 +102,15 @@ class Settings:
             self.profiles[profile_name], self._client_provider
         )
 
-    def get_profile_names(self) -> List[str]:
+    def get_profile_names(self):
         """Returns list of available profile names."""
         return list(self.profiles.keys())
 
-    def get_current_profile(self) -> str:
+    def get_current_profile(self):
         """Returns the name of the current profile."""
         return self.current_profile
 
-    def add_profile(self, profile_name: str, config: Dict) -> None:
+    def add_profile(self, profile_name, config):
         """
         Adds a new profile to the configuration.
 
@@ -140,7 +139,7 @@ class Settings:
 
         self.profiles[profile_name] = config
 
-    def save_to_file(self, file: str = DEFAULT_CONFIG_FILE) -> None:
+    def save_to_file(self, file=DEFAULT_CONFIG_FILE):
         """
         Saves the current configuration to a file.
 
@@ -153,7 +152,7 @@ class Settings:
             yaml.safe_dump(config, stream, default_flow_style=False)
 
 
-def from_file(file: str, client_provider=_default_client_provider) -> Connection:
+def from_file(file, client_provider=_default_client_provider):
     """
     Reads settings from a file and returns the default connection.
     Maintained for backward compatibility.
@@ -165,7 +164,7 @@ def from_file(file: str, client_provider=_default_client_provider) -> Connection
 
 def from_args(
     args, client_provider=_default_client_provider, default_config_file=DEFAULT_CONFIG_FILE
-) -> Connection:
+):
     """
     Reads settings from cli args.
     Maintained for backward compatibility.

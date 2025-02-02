@@ -47,7 +47,7 @@ def test_display_error() -> None:
 
 def test_get_command_input() -> None:
     """Test getting command input."""
-    ui = UI()
+    ui = UI(is_interactive=True)
     
     # Test normal input
     with patch("builtins.input", return_value="test command"):
