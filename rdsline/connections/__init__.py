@@ -28,3 +28,6 @@ class NoopConnection(Connection):
 
     def execute(self, _: str) -> StatementResult:
         return NullResult()
+
+    def __str__(self) -> str:
+        return "NoopConnection"

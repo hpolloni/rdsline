@@ -57,3 +57,13 @@ class RDSSecretsManagerConnection(Connection):
         )
         logging.debug("Got response: %s", response)
         return _to_result(response)
+
+    def __str__(self) -> str:
+        return "\n".join(
+            [
+                "RDSSecretsManagerConnection",
+                "Cluster ARN: " + self.cluster_arn,
+                "Secret ARN: " + self.secret_arn,
+                "Database:" + self.database,
+            ]
+        )
