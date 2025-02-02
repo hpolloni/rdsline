@@ -6,8 +6,6 @@ import argparse
 import logging
 import os
 import sys
-from typing import Any, Dict, List, Callable
-
 import yaml
 
 from rdsline import settings
@@ -20,10 +18,10 @@ class HelpCommand:
     Command to display help information.
     """
 
-    def __init__(self, ui: UI) -> None:
+    def __init__(self, ui):
         self.ui = ui
 
-    def __call__(self, _: List[str]) -> None:
+    def __call__(self, _):
         """
         Displays help information.
         """
@@ -44,24 +42,24 @@ class DebugCommand:
     Toggles debug logging on/off.
     """
 
-    def __init__(self, is_debug: bool, ui: UI):
+    def __init__(self, is_debug, ui):
         """
         Initializes the DebugCommand.
 
         Args:
-        is_debug (bool): Whether debugging is initially on.
-        ui (UI): The UI instance to use for output.
+        is_debug: Whether debugging is initially on.
+        ui: The UI instance to use for output.
         """
         self.is_debug = is_debug
         self.ui = ui
         logging.basicConfig(level=logging.DEBUG if is_debug else logging.WARN)
 
-    def __call__(self, _: Any) -> None:
+    def __call__(self, _):
         """
         Toggles debugging on/off.
 
         Args:
-        _ (Any): Ignored.
+        _: Ignored.
         """
         self.is_debug = not self.is_debug
         logging.getLogger().setLevel(logging.DEBUG if self.is_debug else logging.WARN)
@@ -73,23 +71,23 @@ class ProfileCommand:
     Profile management commands.
     """
 
-    def __init__(self, settings_instance: settings.Settings, ui: UI):
+    def __init__(self, settings_instance, ui):
         """
         Initializes the ProfileCommand.
 
         Args:
-        settings_instance (Settings): The Settings instance to use.
-        ui (UI): The UI instance to use for output.
+        settings_instance: The Settings instance to use.
+        ui: The UI instance to use for output.
         """
         self.settings = settings_instance
         self.ui = ui
 
-    def switch_profile(self, args: List[str]) -> None:
+    def switch_profile(self, args):
         """
         Switches to a different profile.
 
         Args:
-        args (List[str]): The arguments to the command.
+        args: The arguments to the command.
         """
         if len(args) == 1:
             self.ui.print(str(self.settings.connection))
@@ -106,12 +104,12 @@ class ProfileCommand:
         except Exception as ex:
             self.ui.display_error(str(ex))
 
-    def list_profiles(self, _: List[str]) -> None:
+    def list_profiles(self, _):
         """
         Lists available profiles.
 
         Args:
-        _ (List[str]): Ignored.
+        _: Ignored.
         """
         profiles = self.settings.get_profile_names()
         current = self.settings.get_current_profile()
@@ -125,7 +123,7 @@ class ProfileCommand:
             marker = "*" if profile == current else " "
             self.ui.print(f" {marker} {profile}")
 
-    def add_profile(self, _: List[str]) -> None:
+    def add_profile(self, _):
         """
         Interactively adds a new profile to the configuration.
         """
@@ -159,12 +157,12 @@ class ProfileCommand:
         except ValueError as ex:
             self.ui.display_error(str(ex))
 
-    def _get_profile_info(self) -> Dict[str, Any]:
+    def _get_profile_info(self):
         """
         Interactively get profile information from the user.
 
         Returns:
-            Dict[str, Any]: Profile information dictionary
+            Profile information dictionary
 
         Raises:
             ValueError: If any required field is empty or invalid
@@ -218,12 +216,12 @@ class ProfileCommand:
             "credentials": {"profile": aws_profile},
         }
 
-    def _confirm_profile(self, profile: Dict[str, Any]) -> bool:
+    def _confirm_profile(self, profile):
         """
         Show profile summary and get user confirmation.
 
         Args:
-            profile (Dict[str, Any]): Profile information dictionary
+            profile: Profile information dictionary
 
         Returns:
             bool: True if user confirms, False otherwise
@@ -240,12 +238,12 @@ class ProfileCommand:
         return confirm == "y"
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args():
     """
     Parses command line arguments.
 
     Returns:
-    argparse.Namespace: The parsed arguments.
+        The parsed arguments.
     """
     parser = argparse.ArgumentParser(description="The RDS REPL v" + VERSION)
     parser.add_argument(
@@ -258,9 +256,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _handle_sql_command(
-    line: str, buffer: str, ui: UI, settings_instance: settings.Settings
-) -> tuple[str, str]:
+def _handle_sql_command(line, buffer, ui, settings_instance):
     """Handle SQL command input.
 
     Args:
@@ -270,7 +266,7 @@ def _handle_sql_command(
         settings_instance: The settings instance
 
     Returns:
-        tuple[str, str]: Updated buffer and prompt
+        tuple: Updated buffer and prompt
     """
     if line.endswith(";") or line == "":
         buffer += line
@@ -288,7 +284,7 @@ def _handle_sql_command(
     return buffer, prompt
 
 
-def main() -> None:
+def main():
     """
     The main entry point for the program.
     """
@@ -307,7 +303,7 @@ def main() -> None:
         settings_instance.switch_profile(args.profile)
 
     profile_cmd = ProfileCommand(settings_instance, ui)
-    commands: Dict[str, Callable[[List[str]], None]] = {
+    commands = {
         ".help": HelpCommand(ui),
         ".debug": DebugCommand(args.debug, ui),
         ".profile": profile_cmd.switch_profile,
@@ -325,7 +321,7 @@ def main() -> None:
                 continue
 
             if line[0] == ".":
-                cmd_args: List[str] = line.split(" ")
+                cmd_args = line.split(" ")
                 if cmd_args[0] in commands:
                     commands[cmd_args[0]](cmd_args)
                     if cmd_args[0] == ".profile" and ui.is_interactive:
