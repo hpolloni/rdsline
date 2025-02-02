@@ -1,45 +1,13 @@
 """Tests for the CLI module."""
 
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open, call
 import pytest
 from rdsline import cli
 from rdsline.settings import Settings
 from rdsline.connections import NoopConnection
+from rdsline.ui import UI
 import yaml
-from unittest.mock import mock_open
-
-
-def test_help_text() -> None:
-    """Test that the help text includes all commands."""
-    help_text = cli._help()
-    assert ".quit" in help_text
-    assert ".config" in help_text
-    assert ".show" in help_text
-    assert ".debug" in help_text
-    assert ".profile" in help_text
-    assert ".profiles" in help_text
-
-
-def test_read_quit() -> None:
-    """Test that reading .quit exits the program."""
-    with patch("builtins.input", return_value=".quit"):
-        with pytest.raises(SystemExit):
-            cli._read("prompt> ")
-
-
-def test_read_eof() -> None:
-    """Test that EOF exits the program."""
-    with patch("builtins.input", side_effect=EOFError()):
-        with pytest.raises(SystemExit):
-            cli._read("prompt> ")
-
-
-def test_read_normal_input() -> None:
-    """Test reading normal input."""
-    with patch("builtins.input", return_value="SELECT * FROM table"):
-        result = cli._read("prompt> ")
-        assert result == "SELECT * FROM table"
 
 
 def test_parse_args_defaults() -> None:
@@ -62,65 +30,78 @@ def test_parse_args_all_options() -> None:
 
 def test_debug_command() -> None:
     """Test the debug command."""
-    debug = cli.DebugCommand(False)
+    ui = UI(is_interactive=False)
+    debug = cli.DebugCommand(False, ui)
     
     # Test initial state
     assert not debug.is_debug
     
     # Test toggling debug on
-    result = debug([".debug"])
-    assert "Debugging is ON" in result
-    assert debug.is_debug
+    with patch.object(ui, "print") as mock_print:
+        debug([".debug"])
+        mock_print.assert_called_once_with("Debugging is ON")
+        assert debug.is_debug
     
     # Test toggling debug off
-    result = debug([".debug"])
-    assert "Debugging is OFF" in result
-    assert not debug.is_debug
+    with patch.object(ui, "print") as mock_print:
+        debug([".debug"])
+        mock_print.assert_called_once_with("Debugging is OFF")
+        assert not debug.is_debug
 
 
 def test_config_command() -> None:
     """Test the config command."""
-    config = cli.ConfigCommand()
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
     
     # Test missing config file argument
-    result = config([".config"])
-    assert "ERROR: Expecting config file" in result
+    with patch.object(ui, "display_error") as mock_error:
+        config([".config"])
+        mock_error.assert_called_once_with("Expecting config file")
     
     # Test with config file
-    with patch.object(Settings, "load_from_file") as mock_load:
-        result = config([".config", "test_config.yaml"])
+    with patch.object(Settings, "load_from_file") as mock_load, \
+         patch.object(ui, "print") as mock_print:
+        config([".config", "test_config.yaml"])
         mock_load.assert_called_once_with(os.path.expanduser("test_config.yaml"))
+        mock_print.assert_called_once_with("Loaded configuration from test_config.yaml")
 
 
 def test_profile_command_switch() -> None:
     """Test switching profiles."""
-    config = cli.ConfigCommand()
-    profile_cmd = cli.ProfileCommand(config)
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
+    profile_cmd = cli.ProfileCommand(config, ui)
     
     # Test showing current connection when no profile name provided
-    result = profile_cmd.switch_profile([".profile"])
-    assert isinstance(result, str)
-    assert "NoopConnection" in result
+    with patch.object(ui, "print") as mock_print:
+        profile_cmd.switch_profile([".profile"])
+        mock_print.assert_called_once()
+        assert "NoopConnection" in mock_print.call_args[0][0]
     
     # Test switching to non-existent profile
-    result = profile_cmd.switch_profile([".profile", "nonexistent"])
-    assert "ERROR:" in result
+    with patch.object(ui, "display_error") as mock_error:
+        profile_cmd.switch_profile([".profile", "nonexistent"])
+        mock_error.assert_called_once()
     
     # Test switching to existing profile
-    with patch.object(Settings, "switch_profile") as mock_switch:
-        result = profile_cmd.switch_profile([".profile", "test"])
+    with patch.object(Settings, "switch_profile") as mock_switch, \
+         patch.object(ui, "print") as mock_print:
+        profile_cmd.switch_profile([".profile", "test"])
         mock_switch.assert_called_once_with("test")
-        assert "Switched to profile: test" in result
+        mock_print.assert_called_once_with("Switched to profile: test")
 
 
 def test_profile_command_list() -> None:
     """Test listing profiles."""
-    config = cli.ConfigCommand()
-    profile_cmd = cli.ProfileCommand(config)
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
+    profile_cmd = cli.ProfileCommand(config, ui)
     
     # Test empty profiles
-    result = profile_cmd.list_profiles([".profiles"])
-    assert "No profiles configured" in result
+    with patch.object(ui, "print") as mock_print:
+        profile_cmd.list_profiles([".profiles"])
+        mock_print.assert_called_once_with("No profiles configured")
     
     # Test with profiles
     config.settings.profiles = {
@@ -137,17 +118,22 @@ def test_profile_command_list() -> None:
             "database": "test_db"
         }
     }
-    result = profile_cmd.list_profiles([".profiles"])
-    assert "Available profiles:" in result
-    assert "default" in result
-    assert "test" in result
+    with patch.object(ui, "print") as mock_print:
+        profile_cmd.list_profiles([".profiles"])
+        assert mock_print.call_count == 3  # Header + 2 profiles
+        mock_print.assert_has_calls([
+            call("Available profiles:"),
+            call(" * default"),
+            call("   test")
+        ])
 
 
 def test_profile_command_add_profile_success() -> None:
     """Test adding a new profile successfully."""
-    config = cli.ConfigCommand()
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
     config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config)
+    profile_cmd = cli.ProfileCommand(config, ui)
 
     # Mock the input responses for interactive profile creation
     input_responses = [
@@ -160,13 +146,12 @@ def test_profile_command_add_profile_success() -> None:
         "y"  # confirmation
     ]
 
-    with patch("builtins.input", side_effect=input_responses), \
-         patch("builtins.print"), \
+    with patch.object(ui, "read_input", side_effect=input_responses), \
+         patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()) as mock_file:
         
-        result = profile_cmd.add_profile([])
+        profile_cmd.add_profile([])
         
-        assert "Profile 'test_profile' added successfully" in result
         assert "test_profile" in config.settings.profiles
         
         profile = config.settings.profiles["test_profile"]
@@ -178,13 +163,17 @@ def test_profile_command_add_profile_success() -> None:
         
         # Verify the file was opened for writing
         mock_file.assert_called_once_with("test_config.yaml", "w", encoding="utf-8")
+        
+        # Verify the final success message
+        assert mock_print.call_args_list[-1] == call("\nProfile 'test_profile' added successfully")
 
 
 def test_profile_command_add_profile_defaults() -> None:
     """Test adding a new profile with default values."""
-    config = cli.ConfigCommand()
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
     config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config)
+    profile_cmd = cli.ProfileCommand(config, ui)
 
     # Mock the input responses with empty values for defaults
     input_responses = [
@@ -197,22 +186,26 @@ def test_profile_command_add_profile_defaults() -> None:
         "y"  # confirmation
     ]
 
-    with patch("builtins.input", side_effect=input_responses), \
-         patch("builtins.print"), \
+    with patch.object(ui, "read_input", side_effect=input_responses), \
+         patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()):
         
-        result = profile_cmd.add_profile([])
+        profile_cmd.add_profile([])
         
         profile = config.settings.profiles["test_profile"]
         assert profile["type"] == "rds-secretsmanager"  # default type
         assert profile["credentials"]["profile"] == "default"  # default AWS profile
+        
+        # Verify the final success message
+        assert mock_print.call_args_list[-1] == call("\nProfile 'test_profile' added successfully")
 
 
 def test_profile_command_add_profile_cancel() -> None:
     """Test cancelling profile creation."""
-    config = cli.ConfigCommand()
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
     config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config)
+    profile_cmd = cli.ProfileCommand(config, ui)
 
     # Mock the input responses but answer 'n' to confirmation
     input_responses = [
@@ -225,38 +218,41 @@ def test_profile_command_add_profile_cancel() -> None:
         "n"  # confirmation - cancel
     ]
 
-    with patch("builtins.input", side_effect=input_responses), \
-         patch("builtins.print"), \
+    with patch.object(ui, "read_input", side_effect=input_responses), \
+         patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()) as mock_file:
         
-        result = profile_cmd.add_profile([])
+        profile_cmd.add_profile([])
         
-        assert "Profile creation cancelled" in result
         assert "test_profile" not in config.settings.profiles
         mock_file.assert_not_called()
+        
+        # Verify the cancellation message
+        assert mock_print.call_args_list[-1] == call("Profile creation cancelled")
 
 
 def test_profile_command_add_profile_validation() -> None:
     """Test validation of profile inputs."""
-    config = cli.ConfigCommand()
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
     config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config)
+    profile_cmd = cli.ProfileCommand(config, ui)
 
     # Test empty profile name
-    with patch("builtins.input", return_value=""), \
-         patch("builtins.print"):
-        result = profile_cmd.add_profile([])
-        assert "Profile name cannot be empty" in result
+    with patch.object(ui, "read_input", return_value=""), \
+         patch.object(ui, "display_error") as mock_error:
+        profile_cmd.add_profile([])
+        mock_error.assert_called_once_with("Profile name cannot be empty")
 
     # Test invalid connection type
     input_responses = [
         "test_profile",
         "invalid_type"
     ]
-    with patch("builtins.input", side_effect=input_responses), \
-         patch("builtins.print"):
-        result = profile_cmd.add_profile([])
-        assert "Unsupported database connection type" in result
+    with patch.object(ui, "read_input", side_effect=input_responses), \
+         patch.object(ui, "display_error") as mock_error:
+        profile_cmd.add_profile([])
+        mock_error.assert_called_once_with("Unsupported database connection type: invalid_type")
 
     # Test empty required fields
     required_field_tests = [
@@ -266,37 +262,62 @@ def test_profile_command_add_profile_validation() -> None:
     ]
     
     for inputs in required_field_tests:
-        with patch("builtins.input", side_effect=inputs), \
-             patch("builtins.print"):
-            result = profile_cmd.add_profile([])
-            assert "cannot be empty" in result
+        with patch.object(ui, "read_input", side_effect=inputs), \
+             patch.object(ui, "display_error") as mock_error:
+            profile_cmd.add_profile([])
+            mock_error.assert_called_once()
+            assert "cannot be empty" in mock_error.call_args[0][0]
 
 
 def test_profile_command_add_profile_keyboard_interrupt() -> None:
     """Test handling of KeyboardInterrupt during profile creation."""
-    config = cli.ConfigCommand()
+    ui = UI(is_interactive=False)
+    config = cli.ConfigCommand(ui)
     config.config_file = "test_config.yaml"  # Set the config file path
-    profile_cmd = cli.ProfileCommand(config)
+    profile_cmd = cli.ProfileCommand(config, ui)
 
-    with patch("builtins.input", side_effect=KeyboardInterrupt()), \
-         patch("builtins.print"), \
+    with patch.object(ui, "read_input", side_effect=KeyboardInterrupt()), \
+         patch.object(ui, "print") as mock_print, \
          patch("builtins.open", mock_open()) as mock_file:
         
-        result = profile_cmd.add_profile([])
+        profile_cmd.add_profile([])
         
-        assert "Profile creation cancelled" in result
+        # Verify the cancellation message
+        assert mock_print.call_args_list[-1] == call("Profile creation cancelled")
         mock_file.assert_not_called()
 
 
-@patch("builtins.input")
-@patch("builtins.print")
-def test_main_repl_execution(mock_print: MagicMock, mock_input: MagicMock) -> None:
+def test_help_command() -> None:
+    """Test the HelpCommand class."""
+    ui = UI()
+    help_cmd = cli.HelpCommand(ui)
+
+    with patch.object(ui, "print") as mock_print:
+        help_cmd([".help"])
+        
+        # Verify that help text contains all available commands
+        help_text = mock_print.call_args[0][0]
+        assert ".quit" in help_text
+        assert ".config" in help_text
+        assert ".debug" in help_text
+        assert ".profile" in help_text
+        assert ".profiles" in help_text
+        assert ".addprofile" in help_text
+        assert ".show" not in help_text  # Verify removed command is not present
+
+        # Verify command descriptions
+        assert "quits the REPL" in help_text
+        assert "sets new connection settings from a file" in help_text
+        assert "toggle debugging information" in help_text
+        assert "show current connection or switch to a different profile" in help_text
+        assert "list available profiles" in help_text
+        assert "add a new profile interactively" in help_text
+
+
+@patch("sys.stdin")
+def test_main_repl_execution(mock_stdin: MagicMock) -> None:
     """Test the main REPL execution."""
-    # Set up mock inputs to simulate user interaction
-    mock_input.side_effect = [
-        ".help",                 # Help command
-        ".quit"                  # Quit command
-    ]
+    mock_stdin.isatty.return_value = True
 
     # Create a mock config with a default profile
     mock_config = {
@@ -318,11 +339,10 @@ def test_main_repl_execution(mock_print: MagicMock, mock_input: MagicMock) -> No
 
     # Mock config file loading and boto3 session
     with patch("builtins.open", mock_open(read_data=yaml.dump(mock_config))), \
-         patch("sys.stdin") as mock_stdin, \
          patch("sys.argv", ["rdsline"]), \
-         patch("rdsline.settings.create_boto3_session", return_value=mock_session):
-        
-        mock_stdin.isatty.return_value = True
-        
+         patch("rdsline.settings.create_boto3_session", return_value=mock_session), \
+         patch.object(UI, "get_command_input", side_effect=EOFError()), \
+         patch.object(UI, "print"):
+
         with pytest.raises(SystemExit):
             cli.main()

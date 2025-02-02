@@ -2,53 +2,44 @@
 The main entry point for rdsline.
 """
 
-import logging
 import argparse
-import readline  # pylint: disable=unused-import
+import logging
 import os
+import readline  # pylint: disable=unused-import
 import sys
-from typing import List, Any, Callable, Dict, Union
+from typing import Any, Dict, List, Callable
+
 import yaml
 
 from rdsline import settings
-from rdsline.version import VERSION
 from rdsline.connections import Connection
+from rdsline.ui import UI
+from rdsline.version import VERSION
 
 
-def _help() -> str:
+class HelpCommand:
     """
-    Returns a string containing help information.
+    Command to display help information.
     """
-    return "\n".join(
-        [
-            ".quit - quits the REPL",
-            ".config <config_file> - sets new connection settings from a file",
-            ".show - displays current connection settings",
-            ".debug - toggle debugging information",
-            ".profile [name] - show current connection or switch to a different profile",
-            ".profiles - list available profiles",
-            ".addprofile - add a new profile interactively",
-        ]
-    )
 
+    def __init__(self, ui: UI) -> None:
+        self.ui = ui
 
-def _read(prompt: str) -> str:
-    """
-    Reads a line from the user.
-
-    Args:
-    prompt (str): The prompt to display to the user.
-
-    Returns:
-    str: The line read from the user.
-    """
-    try:
-        line = input(f"{prompt}")
-        if line == ".quit":
-            sys.exit(0)
-        return line
-    except EOFError:
-        sys.exit(0)
+    def __call__(self, _: List[str]) -> None:
+        """
+        Displays help information.
+        """
+        help_text = "\n".join(
+            [
+                ".quit - quits the REPL",
+                ".config <config_file> - sets new connection settings from a file",
+                ".debug - toggle debugging information",
+                ".profile [name] - show current connection or switch to a different profile",
+                ".profiles - list available profiles",
+                ".addprofile - add a new profile interactively",
+            ]
+        )
+        self.ui.print(help_text)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -74,29 +65,28 @@ class DebugCommand:
     Toggles debug logging on/off.
     """
 
-    def __init__(self, is_debug: bool):
+    def __init__(self, is_debug: bool, ui: UI):
         """
         Initializes the DebugCommand.
 
         Args:
         is_debug (bool): Whether debugging is initially on.
+        ui (UI): The UI instance to use for output.
         """
         self.is_debug = is_debug
+        self.ui = ui
         logging.basicConfig(level=logging.DEBUG if is_debug else logging.WARN)
 
-    def __call__(self, _: Any) -> str:
+    def __call__(self, _: Any) -> None:
         """
         Toggles debugging on/off.
 
         Args:
         _ (Any): Ignored.
-
-        Returns:
-        str: A message indicating whether debugging is on or off.
         """
         self.is_debug = not self.is_debug
         logging.getLogger().setLevel(logging.DEBUG if self.is_debug else logging.WARN)
-        return "Debugging is " + ("ON" if self.is_debug else "OFF")
+        self.ui.print("Debugging is " + ("ON" if self.is_debug else "OFF"))
 
 
 class ConfigCommand:
@@ -104,52 +94,41 @@ class ConfigCommand:
     Handles configuration file loading and display.
     """
 
-    def __init__(self):
-        """Initialize with empty settings."""
-        self.settings = settings.Settings()
-        self.config_file = None
+    def __init__(self, ui: UI):
+        """
+        Initialize with empty settings.
 
-    def load_config(self, args: List[str]) -> str:
+        Args:
+            ui (UI): The UI instance to use for output.
+        """
+        self.settings = settings.Settings()
+        self.config_file: str = ""
+        self.ui = ui
+
+    def load_config(self, args: List[str]) -> None:
         """
         Load configuration from a file.
 
         Args:
         args (List[str]): The arguments to the command.
-
-        Returns:
-        str: A message indicating the result of the command.
         """
         if len(args) < 2:
-            return "ERROR: Expecting config file"
+            self.ui.display_error("Expecting config file")
+            return
 
         config_file = args[1]
         self.config_file = os.path.expanduser(config_file)
         self.settings.load_from_file(self.config_file)
-        return f"Loaded configuration from {config_file}"
+        self.ui.print(f"Loaded configuration from {config_file}")
 
-    def show_config(self, _: List[str]) -> str:
-        """
-        Show current configuration.
-
-        Args:
-        _ (List[str]): Ignored.
-
-        Returns:
-        str: A string showing the current configuration.
-        """
-        return yaml.dump({"profiles": self.settings.profiles})
-
-    def __call__(self, args: List[str]) -> str:
+    def __call__(self, args: List[str]) -> None:
         """
         Handle configuration commands.
 
         Args:
         args (List[str]): The arguments to the command.
-
-        Returns:
-        str: A message indicating the result of the command.
         """
-        return self.load_config(args)
+        self.load_config(args)
 
     @property
     def connection(self) -> Connection:
@@ -167,128 +146,130 @@ class ProfileCommand:
     Profile management commands.
     """
 
-    def __init__(self, config: ConfigCommand):
+    def __init__(self, config: ConfigCommand, ui: UI):
         """
         Initializes the ProfileCommand.
 
         Args:
         config (ConfigCommand): The ConfigCommand to use.
+        ui (UI): The UI instance to use for output.
         """
         self.config = config
+        self.ui = ui
 
-    def switch_profile(self, args: List[str]) -> str:
+    def switch_profile(self, args: List[str]) -> None:
         """
         Switches to a different profile.
 
         Args:
         args (List[str]): The arguments to the command.
-
-        Returns:
-        str: A message indicating the result of the command.
         """
         if len(args) == 1:
-            return str(self.config.connection)
+            self.ui.print(str(self.config.connection))
+            return
 
         if len(args) != 2:
-            return "ERROR: Expecting profile name"
+            self.ui.display_error("Expecting profile name")
+            return
 
         profile_name = args[1]
         try:
             self.config.settings.switch_profile(profile_name)
-            return f"Switched to profile: {profile_name}"
+            self.ui.print(f"Switched to profile: {profile_name}")
         except Exception as ex:
-            return f"ERROR: {str(ex)}"
+            self.ui.display_error(str(ex))
 
-    def list_profiles(self, _: List[str]) -> str:
+    def list_profiles(self, _: List[str]) -> None:
         """
         Lists available profiles.
 
         Args:
         _ (List[str]): Ignored.
-
-        Returns:
-        str: A string listing the available profiles.
         """
         profiles = self.config.settings.get_profile_names()
         current = self.config.settings.get_current_profile()
 
         if not profiles:
-            return "No profiles configured"
+            self.ui.print("No profiles configured")
+            return
 
-        result = ["Available profiles:"]
+        self.ui.print("Available profiles:")
         for profile in profiles:
             marker = "*" if profile == current else " "
-            result.append(f" {marker} {profile}")
-        return "\n".join(result)
+            self.ui.print(f" {marker} {profile}")
 
-    def add_profile(self, _: List[str]) -> str:
+    def add_profile(self, _: List[str]) -> None:
         """
         Interactively adds a new profile to the configuration.
-
-        Returns:
-        str: A message indicating the result of the command.
         """
-        print("\nAdding a new profile. Press Ctrl+C at any time to cancel.\n")
-
         try:
-            # Get and validate profile name
+            # Get and validate profile info
             profile_info = self._get_profile_info()
-            if isinstance(profile_info, str):
-                return profile_info  # Return error message if validation failed
+            name = profile_info["name"]
+
+            if name in self.config.settings.profiles:
+                self.ui.display_error(f"Profile '{name}' already exists")
+                return
 
             # Show summary and confirm
-            if not self._show_and_confirm_profile(profile_info):
-                return "Profile creation cancelled"
+            if not self._confirm_profile(profile_info):
+                self.ui.print("Profile creation cancelled")
+                return
 
             # Save the profile
-            name = profile_info["name"]
             del profile_info["name"]  # Remove name from the profile data
             self.config.settings.profiles[name] = profile_info
 
             # Save the updated configuration
+            if not self.config.config_file:
+                self.ui.display_error("No config file set")
+                return
+
             with open(self.config.config_file, "w", encoding="utf-8") as f:
                 yaml.dump({"profiles": self.config.settings.profiles}, f)
 
-            return f"\nProfile '{name}' added successfully"
+            self.ui.print(f"\nProfile '{name}' added successfully")
 
         except KeyboardInterrupt:
-            print()  # Add a newline after ^C
-            return "Profile creation cancelled"
+            self.ui.print("")  # Add a newline after ^C
+            self.ui.print("Profile creation cancelled")
+        except ValueError as ex:
+            self.ui.display_error(str(ex))
 
-    def _get_profile_info(self) -> Union[Dict[str, Any], str]:
+    def _get_profile_info(self) -> Dict[str, Any]:
         """
-        Get profile information from user input.
+        Interactively get profile information from the user.
 
         Returns:
-        Union[Dict[str, Any], str]: Profile information dictionary if successful,
-                                  error message string if validation fails.
-        """
-        # Validate profile name
-        name = input("Profile name: ").strip()
-        if not name:
-            return "Profile name cannot be empty"
-        if name in self.config.settings.profiles:
-            return f"Profile '{name}' already exists"
+            Dict[str, Any]: Profile information dictionary
 
-        # Get and validate connection type
-        print("\nConnection type (currently only rds-secretsmanager is supported)")
-        profile_type = input("Connection type [rds-secretsmanager]: ").strip()
+        Raises:
+            ValueError: If any required field is empty or invalid
+        """
+        self.ui.print("\nAdding a new profile. Press Ctrl+C at any time to cancel.\n")
+
+        # Get profile details
+        name = self.ui.read_input("Profile name: ").strip()
+        if not name:
+            raise ValueError("Profile name cannot be empty")
+
+        self.ui.print("\nConnection type (currently only rds-secretsmanager is supported)")
+        profile_type = self.ui.read_input("Connection type [rds-secretsmanager]: ").strip()
         if not profile_type:
             profile_type = "rds-secretsmanager"
         elif profile_type != "rds-secretsmanager":
-            return f"Unsupported database connection type: {profile_type}"
+            raise ValueError(f"Unsupported database connection type: {profile_type}")
 
-        # Get and validate required fields
-        print("\nCluster ARN")
-        print("Format: arn:aws:rds:<region>:<account>:cluster:<cluster-name>")
-        cluster_arn = input("Cluster ARN: ").strip()
+        self.ui.print("\nCluster ARN")
+        self.ui.print("Format: arn:aws:rds:<region>:<account>:cluster:<cluster-name>")
+        cluster_arn = self.ui.read_input("Cluster ARN: ").strip()
 
-        print("\nSecret ARN")
-        print("Format: arn:aws:secretsmanager:<region>:<account>:secret:<secret-name>")
-        secret_arn = input("Secret ARN: ").strip()
+        self.ui.print("\nSecret ARN")
+        self.ui.print("Format: arn:aws:secretsmanager:<region>:<account>:secret:<secret-name>")
+        secret_arn = self.ui.read_input("Secret ARN: ").strip()
 
-        print("\nDatabase name")
-        database = input("Database: ").strip()
+        self.ui.print("\nDatabase name")
+        database = self.ui.read_input("Database: ").strip()
 
         # Validate required fields
         required_fields = [
@@ -298,11 +279,10 @@ class ProfileCommand:
         ]
         for field_name, value in required_fields:
             if not value:
-                return f"{field_name} cannot be empty"
+                raise ValueError(f"{field_name} cannot be empty")
 
-        # Get optional AWS profile
-        print("\nAWS credentials profile (optional)")
-        aws_profile = input("AWS Profile [default]: ").strip()
+        self.ui.print("\nAWS credentials profile (optional)")
+        aws_profile = self.ui.read_input("AWS Profile [default]: ").strip()
         if not aws_profile:
             aws_profile = "default"
 
@@ -315,26 +295,76 @@ class ProfileCommand:
             "credentials": {"profile": aws_profile},
         }
 
-    def _show_and_confirm_profile(self, profile: Dict[str, Any]) -> bool:
+    def _confirm_profile(self, profile: Dict[str, Any]) -> bool:
         """
         Show profile summary and get user confirmation.
 
         Args:
-        profile: Profile information dictionary.
+            profile (Dict[str, Any]): Profile information dictionary
 
         Returns:
-        bool: True if user confirms, False otherwise.
+            bool: True if user confirms, False otherwise
         """
-        print("\nProfile Summary:")
-        print(f"  Name: {profile['name']}")
-        print(f"  Type: {profile['type']}")
-        print(f"  Cluster ARN: {profile['cluster_arn']}")
-        print(f"  Secret ARN: {profile['secret_arn']}")
-        print(f"  Database: {profile['database']}")
-        print(f"  AWS Profile: {profile['credentials']['profile']}")
+        self.ui.print("\nProfile Summary:")
+        self.ui.print(f"  Name: {profile['name']}")
+        self.ui.print(f"  Type: {profile['type']}")
+        self.ui.print(f"  Cluster ARN: {profile['cluster_arn']}")
+        self.ui.print(f"  Secret ARN: {profile['secret_arn']}")
+        self.ui.print(f"  Database: {profile['database']}")
+        self.ui.print(f"  AWS Profile: {profile['credentials']['profile']}")
 
-        confirm = input("\nSave this profile? [y/N]: ").strip().lower()
+        confirm = self.ui.read_input("\nSave this profile? [y/N]: ").strip().lower()
         return confirm == "y"
+
+
+def _handle_sql_command(line: str, buffer: str, ui: UI, config: ConfigCommand) -> tuple[str, str]:
+    """Handle SQL command input.
+
+    Args:
+        line: The input line
+        buffer: The current SQL buffer
+        ui: The UI instance
+        config: The configuration instance
+
+    Returns:
+        tuple[str, str]: Updated buffer and prompt
+    """
+    if line.endswith(";") or line == "":
+        buffer += line
+        try:
+            result = config.connection.execute(buffer)
+            ui.print(str(result))
+        except Exception as ex:  # pylint: disable=broad-except
+            ui.display_error(str(ex))
+        finally:
+            buffer = ""
+            prompt = f"{config.settings.get_current_profile()}> "
+    else:
+        buffer += line + " "
+        prompt = "|"
+    return buffer, prompt
+
+
+def _handle_dot_command(
+    line: str, ui: UI, config: ConfigCommand, commands: Dict[str, Callable[[List[str]], None]]
+) -> str:
+    """Handle dot command input.
+
+    Args:
+        line: The input line
+        ui: The UI instance
+        config: The configuration instance
+        commands: The commands dictionary
+
+    Returns:
+        str: Updated prompt
+    """
+    cmd_args: List[str] = line.split(" ")
+    if cmd_args[0] in commands:
+        commands[cmd_args[0]](cmd_args)
+        if cmd_args[0] == ".profile" and ui.is_interactive:
+            return f"{config.settings.get_current_profile()}> "
+    return f"{config.settings.get_current_profile()}> "
 
 
 def main() -> None:
@@ -342,7 +372,8 @@ def main() -> None:
     The main entry point for the program.
     """
     args = _parse_args()
-    config = ConfigCommand()
+    ui = UI(is_interactive=sys.stdin.isatty())
+    config = ConfigCommand(ui)
 
     # Initialize with config file
     if args.config:
@@ -354,11 +385,10 @@ def main() -> None:
     if args.profile:
         config.settings.switch_profile(args.profile)
 
-    profile_cmd = ProfileCommand(config)
-    commands: Dict[str, Callable[[List[str]], str]] = {
-        ".help": lambda _: _help(),
-        ".show": lambda _: str(config.connection),
-        ".debug": DebugCommand(args.debug),
+    profile_cmd = ProfileCommand(config, ui)
+    commands: Dict[str, Callable[[List[str]], None]] = {
+        ".help": HelpCommand(ui),
+        ".debug": DebugCommand(args.debug, ui),
         ".config": config,
         ".profile": profile_cmd.switch_profile,
         ".profiles": profile_cmd.list_profiles,
@@ -366,34 +396,23 @@ def main() -> None:
     }
 
     buffer = ""
-    default_prompt = ""
-    if sys.stdin.isatty():
-        default_prompt = f"{config.settings.get_current_profile()}> "
-        print("The RDS REPL v" + VERSION)
-        print("Type .help for help")
-    prompt = default_prompt
+    prompt = f"{config.settings.get_current_profile()}> "
 
     while True:
-        line = _read(prompt)
-        if line and line[0] == ".":
-            cmd_args: List[str] = line.split(" ")
-            if cmd_args[0] in commands:
-                print(commands[cmd_args[0]](cmd_args))
-                if cmd_args[0] == ".profile" and sys.stdin.isatty():
-                    default_prompt = f"{config.settings.get_current_profile()}> "
-                    prompt = default_prompt
-        elif line.endswith(";") or line == "":
-            buffer += line
-            try:
-                print(config.connection.execute(buffer))
-            except Exception as ex:  # pylint: disable=broad-except
-                print(f"Error: {str(ex)}")
-            finally:
-                buffer = ""
-                prompt = default_prompt
-        else:
-            buffer += line + " "
-            prompt = "|"
+        try:
+            line = ui.get_command_input(prompt)
+            if not line:
+                continue
+
+            if line[0] == ".":
+                prompt = _handle_dot_command(line, ui, config, commands)
+            else:
+                buffer, prompt = _handle_sql_command(line, buffer, ui, config)
+        except EOFError:
+            sys.exit(0)
+        except KeyboardInterrupt:
+            ui.print("")
+            sys.exit(0)
 
 
 if __name__ == "__main__":
